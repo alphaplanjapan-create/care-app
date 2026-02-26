@@ -1,0 +1,2306 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>介護記録 管理システム</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --blue:#2563eb;--blue2:#1d4ed8;--bluebg:#eff6ff;
+  --green:#16a34a;--greenbg:#f0fdf4;
+  --red:#dc2626;--redbg:#fef2f2;
+  --yellow:#d97706;--yellowbg:#fffbeb;
+  --gray:#6b7280;--graybg:#f9fafb;--border:#e5e7eb;
+  --radius:12px;--shadow:0 2px 16px rgba(0,0,0,.08);
+}
+body{font-family:'Hiragino Kaku Gothic Pro','メイリオ',sans-serif;background:#f1f5f9;color:#1e293b;min-height:100vh;}
+
+/* ===== PIN画面 ===== */
+#pin-screen{
+  position:fixed;inset:0;z-index:9999;
+  background:linear-gradient(135deg,#1e3a5f 0%,#2563eb 100%);
+  display:flex;align-items:center;justify-content:center;
+}
+.pin-card{background:#fff;border-radius:20px;padding:36px 32px;width:320px;text-align:center;box-shadow:0 12px 48px rgba(0,0,0,.25);}
+.pin-card h2{font-size:20px;font-weight:800;margin:12px 0 4px;}
+.pin-card .sub{font-size:12px;color:#64748b;margin-bottom:6px;}
+.pin-hint-box{background:#fef9c3;border:1.5px solid #fde047;border-radius:8px;padding:8px 12px;font-size:13px;font-weight:700;color:#854d0e;margin-bottom:20px;}
+.dots{display:flex;justify-content:center;gap:14px;margin-bottom:22px;}
+.dot{width:16px;height:16px;border-radius:50%;background:#e2e8f0;transition:.15s;}
+.dot.on{background:#2563eb;transform:scale(1.1);}
+.numpad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+.numpad button{padding:15px;border:2px solid #e2e8f0;border-radius:10px;font-size:20px;font-weight:700;background:#f8faff;cursor:pointer;transition:.15s;color:#1e293b;}
+.numpad button:hover{background:#dbeafe;border-color:#93c5fd;}
+.numpad button:active{transform:scale(.93);}
+.numpad .del{background:#fef2f2;border-color:#fecaca;color:#dc2626;font-size:16px;}
+.pin-err{color:#dc2626;font-size:13px;font-weight:600;min-height:18px;margin-top:10px;}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-10px)}75%{transform:translateX(10px)}}
+.shake{animation:shake .35s ease;}
+
+/* ===== NAV ===== */
+nav{background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;box-shadow:0 2px 12px rgba(37,99,235,.3);position:sticky;top:0;z-index:100;}
+.nav-in{max-width:1200px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;padding:0 14px;flex-wrap:nowrap;gap:6px;min-height:52px;}
+.brand{display:flex;align-items:center;gap:0;padding:10px 0;white-space:nowrap;flex-shrink:0;}
+.brand-icon{display:none;}
+.brand h1{font-size:14px;font-weight:800;line-height:1.2;white-space:nowrap;}
+.brand p{font-size:10px;opacity:.8;margin-top:1px;white-space:nowrap;}
+.nav-btns{display:flex;gap:2px;flex-wrap:nowrap;}
+.nav-btn{padding:6px 10px;border-radius:7px;cursor:pointer;font-size:11.5px;font-weight:600;color:rgba(255,255,255,.75);border:none;background:transparent;transition:.2s;white-space:nowrap;}
+.nav-btn:hover{background:rgba(255,255,255,.15);color:#fff;}
+.nav-btn.on{background:rgba(255,255,255,.22);color:#fff;}
+.lock-btn{padding:6px 10px;border-radius:7px;background:rgba(255,255,255,.15);color:#fff;border:1.5px solid rgba(255,255,255,.35);font-size:11.5px;cursor:pointer;font-weight:600;white-space:nowrap;}
+.lock-btn:hover{background:rgba(255,255,255,.25);}
+
+/* ===== PAGE ===== */
+.page{display:none;max-width:1100px;margin:24px auto;padding:0 16px;}
+.page.on{display:block;}
+
+/* ===== CARD ===== */
+.card{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);padding:22px;margin-bottom:18px;}
+.card-title{font-size:14px;font-weight:700;color:var(--blue);margin-bottom:16px;padding-bottom:10px;border-bottom:2px solid var(--bluebg);display:flex;align-items:center;gap:7px;}
+
+/* ===== FORM ===== */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;}
+.full{grid-column:1/-1;}
+.fg{display:flex;flex-direction:column;gap:4px;}
+label{font-size:12px;font-weight:600;color:#475569;}
+input,select,textarea{border:1.5px solid var(--border);border-radius:8px;padding:9px 11px;font-size:13px;font-family:inherit;background:#fafafa;transition:.2s;}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--blue);background:#fff;box-shadow:0 0 0 3px rgba(37,99,235,.07);}
+textarea{resize:vertical;min-height:68px;}
+
+/* ===== INPUT TAB ===== */
+.itabs{display:flex;gap:6px;margin-bottom:16px;}
+.itab{padding:8px 18px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;border:2px solid var(--border);color:var(--gray);background:#fff;transition:.2s;}
+.itab.on{border-color:var(--blue);color:var(--blue);background:var(--bluebg);}
+.ipane{display:none;}
+.ipane.on{display:block;}
+
+/* ===== BUTTONS ===== */
+.btn{border:none;border-radius:9px;padding:10px 18px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px;transition:.2s;}
+.btn:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,.12);}
+.btn:active{transform:translateY(0);}
+.bp{background:var(--blue);color:#fff;}
+.bp:hover{background:var(--blue2);}
+.bs{background:var(--green);color:#fff;}
+.bd{background:var(--red);color:#fff;}
+.bo{background:#fff;color:var(--blue);border:2px solid var(--blue);}
+.bg{background:#f1f5f9;color:#475569;}
+.brow{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;}
+
+/* ===== VOICE ===== */
+.voice-wrap{background:#fff5f5;border:2px dashed #fca5a5;border-radius:10px;padding:14px;margin-bottom:14px;}
+.voice-wrap p{font-size:12px;color:#991b1b;font-weight:600;margin-bottom:8px;}
+.rec-ind{display:none;align-items:center;gap:7px;margin-top:8px;font-size:12px;color:var(--red);}
+.rec-dot{width:10px;height:10px;border-radius:50%;background:var(--red);animation:blink 1s infinite;}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:.2;}}
+
+/* 音声入力チェックリスト */
+.voice-check{background:#f0fdf4;border:1.5px solid #86efac;border-radius:8px;padding:10px 14px;margin-top:10px;font-size:11px;}
+.voice-check strong{font-size:12px;color:#15803d;display:block;margin-bottom:6px;}
+.vc-items{display:flex;flex-wrap:wrap;gap:5px;}
+.vci{padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600;}
+.vci.ok{background:#dcfce7;color:#15803d;}
+.vci.ng{background:#fee2e2;color:#dc2626;}
+.vci.na{background:#f1f5f9;color:#94a3b8;}
+
+/* ===== OUTPUT ===== */
+.out-box{background:#f8faff;border:1.5px solid #bfdbfe;border-radius:10px;padding:18px;font-size:13px;line-height:2;white-space:pre-wrap;min-height:80px;display:none;}
+.out-box.on{display:block;}
+.out-empty{text-align:center;padding:28px;color:#94a3b8;font-size:13px;}
+
+/* ===== VITAL CHIPS ===== */
+.vc{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;margin:2px;}
+.vc-r{background:var(--redbg);color:var(--red);}
+.vc-y{background:var(--yellowbg);color:var(--yellow);}
+.vc-g{background:var(--greenbg);color:var(--green);}
+
+/* ===== STATS ===== */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px;}
+.stat{background:#fff;border-radius:var(--radius);padding:18px;text-align:center;box-shadow:var(--shadow);}
+.stat .n{font-size:32px;font-weight:800;color:var(--blue);}
+.stat .l{font-size:11px;color:var(--gray);margin-top:3px;}
+.stat .s{font-size:11px;color:#94a3b8;margin-top:2px;}
+
+/* ===== TABLE ===== */
+.twrap{overflow-x:auto;border-radius:10px;border:1.5px solid var(--border);}
+table{width:100%;border-collapse:collapse;font-size:12.5px;}
+thead{background:var(--bluebg);}
+th{padding:10px 13px;text-align:left;font-weight:700;color:var(--blue);white-space:nowrap;}
+tbody tr{border-top:1px solid var(--border);transition:background .1s;}
+tbody tr:hover{background:#f8faff;}
+td{padding:10px 13px;vertical-align:middle;}
+.tag{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;}
+.tbl{background:#dbeafe;color:#1d4ed8;}
+.tgr{background:#dcfce7;color:#15803d;}
+.tyl{background:#fef9c3;color:#a16207;}
+.trd{background:#fee2e2;color:#dc2626;}
+
+/* ===== FILTER ===== */
+.frow{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;align-items:center;}
+.frow input,.frow select{padding:8px 11px;font-size:13px;border-radius:8px;border:1.5px solid var(--border);font-family:inherit;}
+.frow input:focus,.frow select:focus{outline:none;border-color:var(--blue);}
+
+/* ===== MODAL ===== */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:500;align-items:center;justify-content:center;}
+.modal-bg.on{display:flex;}
+.modal{background:#fff;border-radius:16px;padding:26px;max-width:600px;width:92%;max-height:82vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,.18);}
+.modal h3{font-size:15px;font-weight:700;color:var(--blue);margin-bottom:14px;padding-bottom:10px;border-bottom:2px solid var(--bluebg);}
+.modal pre{font-size:12.5px;line-height:1.9;white-space:pre-wrap;font-family:inherit;}
+
+/* ===== SETUP ===== */
+.step{display:flex;gap:14px;margin-bottom:18px;padding:16px;background:var(--graybg);border-radius:10px;border:1.5px solid var(--border);}
+.snum{min-width:30px;height:30px;border-radius:50%;background:var(--blue);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;}
+.step h3{font-size:13px;font-weight:700;margin-bottom:3px;}
+.step p{font-size:12px;color:#475569;line-height:1.7;}
+.codebox{background:#1e293b;color:#7dd3fc;border-radius:8px;padding:13px;font-family:monospace;font-size:11.5px;line-height:1.8;margin-top:8px;overflow-x:auto;}
+
+/* ===== LOADING ===== */
+.loading{display:none;align-items:center;gap:8px;font-size:13px;color:var(--blue);margin-top:10px;}
+.loading.on{display:flex;}
+.spin{width:16px;height:16px;border:2.5px solid var(--bluebg);border-top-color:var(--blue);border-radius:50%;animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* ===== TOAST ===== */
+.toast{position:fixed;bottom:24px;right:24px;z-index:9000;background:#1e293b;color:#fff;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:600;box-shadow:0 4px 20px rgba(0,0,0,.2);display:none;align-items:center;gap:8px;}
+.toast.on{display:flex;animation:up .3s ease;}
+@keyframes up{from{transform:translateY(16px);opacity:0;}to{transform:translateY(0);opacity:1;}}
+
+/* ===== SETTINGS PAGE ===== */
+.settings-section{margin-bottom:22px;}
+.settings-section .sec-title{font-size:13px;font-weight:700;color:var(--blue);margin-bottom:12px;padding-bottom:6px;border-bottom:2px solid var(--bluebg);display:flex;align-items:center;gap:6px;}
+.setting-row{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:8px;}
+.setting-row:last-child{border-bottom:none;}
+.setting-label{font-size:13px;font-weight:600;}
+.setting-desc{font-size:11px;color:#94a3b8;margin-top:2px;}
+.setting-control select,.setting-control input[type=text]{padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;background:#fff;}
+.setting-control input[type=text]{width:180px;}
+.toggle-wrap{display:flex;align-items:center;gap:8px;}
+.toggle{position:relative;width:44px;height:24px;display:inline-block;flex-shrink:0;}
+.toggle input{opacity:0;width:100%;height:100%;position:absolute;left:0;top:0;cursor:pointer;z-index:3;margin:0;}
+.toggle-slider{position:absolute;inset:0;background:#cbd5e1;border-radius:24px;cursor:pointer;transition:.3s;z-index:1;}
+.toggle-slider:before{content:'';position:absolute;width:18px;height:18px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.3s;z-index:2;}
+.toggle input:checked + .toggle-slider{background:var(--blue);}
+.toggle input:checked + .toggle-slider:before{transform:translateX(20px);}
+.setting-control label.toggle{cursor:pointer;}
+.admin-badge{display:inline-flex;align-items:center;gap:4px;background:#fef3c7;color:#b45309;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;}
+/* 自動ロックカウントダウン警告 */
+#auto-lock-warning{display:none;position:fixed;top:70px;right:16px;z-index:800;background:#fef3c7;border:2px solid #d97706;border-radius:12px;padding:12px 18px;font-size:13px;font-weight:700;color:#92400e;box-shadow:0 4px 16px rgba(0,0,0,.15);animation:up .3s ease;}
+#auto-lock-warning .alw-close{cursor:pointer;margin-left:12px;color:#92400e;font-size:16px;}
+/* ===== RESPONSIVE ===== */
+@media(max-width:680px){
+  .g2,.g3,.stats{grid-template-columns:1fr;}
+  .full{grid-column:1;}
+  .nav-btns{display:flex;flex-wrap:nowrap;overflow-x:auto;}
+  .nav-btn{font-size:10px;padding:5px 7px;}
+  .stats{grid-template-columns:1fr 1fr;}
+  .setting-row{flex-direction:column;align-items:flex-start;}
+}
+</style>
+</head>
+<body>
+
+<!-- ===== PINロック画面 ===== -->
+<div id="pin-screen">
+  <div class="pin-card" id="pin-card" style="width:340px;padding:30px 28px;">
+    <h2 style="font-size:18px;font-weight:800;color:#1e3a5f;margin-bottom:4px;">介護記録 管理システム</h2>
+
+    <!-- STEP 1: 担当者選択 -->
+    <div id="pin-step1">
+      <p class="sub" style="margin-bottom:16px;">あなたの名前を選択してください</p>
+      <div id="pin-staff-list" style="max-height:260px;overflow-y:auto;text-align:left;"></div>
+      <p style="font-size:11px;color:#94a3b8;margin-top:12px;line-height:1.6;">名前がない場合は<br>「記録入力 → 担当スタッフ ＋編集」で追加できます</p>
+    </div>
+
+    <!-- STEP 2: PIN入力 -->
+    <div id="pin-step2" style="display:none;">
+      <div id="pin-who" style="background:#eff6ff;border-radius:8px;padding:9px 14px;font-size:14px;font-weight:700;color:#1d4ed8;margin-bottom:14px;">👤 —</div>
+      <p class="sub" style="margin-bottom:6px;">PINコードを入力してください</p>
+      <div class="pin-hint-box">🔑 デモ用PINコード：<strong>1 2 3 4</strong></div>
+      <div class="dots">
+        <div class="dot" id="d0"></div>
+        <div class="dot" id="d1"></div>
+        <div class="dot" id="d2"></div>
+        <div class="dot" id="d3"></div>
+      </div>
+      <div class="numpad">
+        <button onclick="pi('1')">1</button>
+        <button onclick="pi('2')">2</button>
+        <button onclick="pi('3')">3</button>
+        <button onclick="pi('4')">4</button>
+        <button onclick="pi('5')">5</button>
+        <button onclick="pi('6')">6</button>
+        <button onclick="pi('7')">7</button>
+        <button onclick="pi('8')">8</button>
+        <button onclick="pi('9')">9</button>
+        <button class="del" onclick="pd()">⌫</button>
+        <button onclick="pi('0')">0</button>
+        <button style="font-size:14px;background:#f0fdf4;border-color:#86efac;color:#15803d;" onclick="checkPin()">✓</button>
+      </div>
+      <button onclick="goBackToStep1()" style="margin-top:14px;font-size:12px;color:#94a3b8;background:none;border:none;cursor:pointer;text-decoration:underline;">← 担当者を選び直す</button>
+    </div>
+
+    <div class="pin-err" id="perr"></div>
+  </div>
+</div>
+
+<!-- ===== NAV ===== -->
+<nav>
+  <div class="nav-in">
+    <div class="brand">
+      <div>
+        <h1>介護記録 管理システム</h1>
+        <p>ログイン中：<span id="login-name">—</span></p>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <div class="nav-btns">
+        <button class="nav-btn on" onclick="sp('rec',this)">📝 記録入力</button>
+        <button class="nav-btn" onclick="sp('list',this)">📂 記録一覧</button>
+        <button class="nav-btn" onclick="sp('dash',this)">📊 ダッシュボード</button>
+        <button class="nav-btn" onclick="sp('setup',this)">⚙️ 導入ガイド</button>
+        <button class="nav-btn" id="nav-staff-btn" style="display:none;" onclick="sp('staff',this)">👥 スタッフ管理</button>
+        <button class="nav-btn" id="nav-settings-btn" style="display:none;" onclick="sp('settings',this)">🛠 管理設定</button>
+      </div>
+      <button class="lock-btn" onclick="openPinModal()" title="PINコード変更">🔑 PIN</button>
+      <button class="lock-btn" onclick="lockScreen()" title="画面ロック">🔒</button>
+    </div>
+  </div>
+</nav>
+
+<!-- ========== 記録入力 ========== -->
+<div class="page on" id="page-rec">
+  <div class="g2">
+
+    <!-- 左：フォーム -->
+    <div>
+      <div class="card">
+        <div class="card-title">📋 基本情報</div>
+        <div class="g2">
+          <div class="fg"><label>👤 利用者名 *</label><input id="f-name" placeholder="例：山田 花子"></div>
+          <div class="fg"><label>📅 記録日時</label><input id="f-dt" type="datetime-local"></div>
+          <div class="fg">
+            <label>👩‍⚕️ 担当スタッフ *
+              <button type="button" id="staff-edit-btn" onclick="openStaffMgr()" style="margin-left:8px;padding:2px 8px;font-size:10px;background:#fef3c7;border:1.5px solid #fde047;border-radius:6px;cursor:pointer;color:#b45309;font-weight:700;display:none;">👑 スタッフ編集</button>
+            </label>
+            <select id="f-staff"><option value="">-- 担当者を選択 --</option></select>
+          </div>
+          <div class="fg"><label>🏷️ サービス種別</label>
+            <select id="f-svc">
+              <option>デイサービス</option><option>訪問介護</option>
+              <option>施設入居</option><option>ショートステイ</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">💉 バイタルサイン <span style="font-size:11px;font-weight:400;color:#94a3b8;margin-left:4px;">入力で自動チェック</span></div>
+        <div class="g2">
+          <div class="fg"><label>🌡️ 体温（℃）</label><input id="f-temp" type="number" step="0.1" placeholder="36.5" oninput="checkV()"></div>
+          <div class="fg"><label>❤️ 血圧（mmHg）</label><input id="f-bp" placeholder="120/75" oninput="checkV()"></div>
+          <div class="fg"><label>💓 脈拍（回/分）</label><input id="f-pulse" type="number" placeholder="72" oninput="checkV()"></div>
+          <div class="fg"><label>🩸 SpO2（%）</label><input id="f-spo2" type="number" placeholder="98" oninput="checkV()"></div>
+        </div>
+        <div id="v-alerts" style="margin-top:8px;"></div>
+        <!-- 正常範囲目安 -->
+        <div style="margin-top:10px;background:#f8faff;border-radius:8px;padding:10px 12px;font-size:11px;color:#475569;line-height:1.9;">
+          <strong style="color:var(--blue);">📊 正常範囲の目安：</strong>
+          体温 36.0〜37.0℃　／　血圧 90〜139/60〜89mmHg　／　脈拍 60〜100回/分　／　SpO2 95%以上
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">🛁 ケア記録</div>
+        <div class="g2">
+          <div class="fg"><label>🍱 食事量</label>
+            <select id="f-meal"><option value="">選択</option>
+              <option>全量摂取</option><option>8割程度摂取</option>
+              <option>半量摂取</option><option>3割程度摂取</option><option>少量摂取</option><option>ほぼ摂取できず</option>
+            </select>
+          </div>
+          <div class="fg"><label>💧 水分摂取</label>
+            <select id="f-water"><option value="">選択</option>
+              <option>十分摂取</option><option>少量摂取</option><option>摂取拒否あり</option>
+            </select>
+          </div>
+          <div class="fg"><label>🚿 入浴</label>
+            <select id="f-bath"><option value="">選択</option>
+              <option>自立入浴（問題なし）</option><option>入浴介助実施（問題なし）</option><option>シャワー浴実施</option>
+              <option>清拭実施</option><option>本日は入浴なし</option>
+            </select>
+          </div>
+          <div class="fg"><label>🚽 排泄</label>
+            <select id="f-toilet"><option value="">選択</option>
+              <option>自立排泄（問題なし）</option><option>一部介助にて排泄</option>
+              <option>全介助にて排泄</option><option>オムツ交換実施</option>
+            </select>
+          </div>
+          <div class="fg"><label>🚶 移動</label>
+            <select id="f-walk"><option value="">選択</option>
+              <option>自立歩行（問題なし）</option><option>歩行器使用にて移動</option>
+              <option>車椅子にて移動</option><option>全介助にて移動</option>
+            </select>
+          </div>
+          <div class="fg"><label>😊 本人の様子</label>
+            <select id="f-mood"><option value="">選択</option>
+              <option>笑顔があり良好</option><option>穏やか・落ち着いている</option>
+              <option>やや元気がない様子</option><option>不穏・興奮がみられた</option>
+              <option>傾眠傾向あり</option>
+            </select>
+          </div>
+          <div class="fg full"><label>📌 特記事項</label>
+            <textarea id="f-note" placeholder="変化・気になること・家族への申し送りなど"></textarea>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 右：AI生成・出力 -->
+    <div>
+      <div class="card">
+        <div class="card-title">✨ AI記録生成</div>
+        <div class="itabs">
+          <div class="itab on" id="it-memo" onclick="sit('memo',this)">🎤 メモ・音声から生成</div>
+          <div class="itab" id="it-form" onclick="sit('form',this)">📋 フォームから生成</div>
+        </div>
+
+        <div class="ipane" id="ip-form">
+          <div style="background:var(--bluebg);border-radius:8px;padding:12px;font-size:12px;color:#1d4ed8;">
+            💡 左のフォームを入力して下のボタンを押すと、正式な介護記録文が自動生成されます。
+          </div>
+        </div>
+
+        <div class="ipane on" id="ip-memo">
+          <div class="voice-wrap">
+            <p>🎤 音声で話す or メモをそのまま貼り付けてください</p>
+            <div style="background:#fffbeb;border-radius:6px;padding:8px 10px;font-size:11px;color:#92400e;margin-bottom:8px;line-height:1.7;">
+              💬 <strong>読み上げ例：</strong>「山田さん、体温36.5、血圧120の75、脈拍72、SpO2は98、食事は半分食べました。水分は十分とれています。入浴は自分でできました。排泄も自立。移動は歩行器を使っています。笑顔で良好です。」
+              <div style="margin-top:4px;font-size:10.5px;color:#b45309;">💡 SpO2は「えすぴーおーつー98」または「98パーセント」のように話すと認識されます。担当者は選択済みのため入力不要です。</div>
+            </div>
+            <textarea id="f-memo" style="width:100%;min-height:88px;"
+              placeholder="例：山田さん体温36.5血圧120の75脈拍72 SpO2は98食事はほぼ全量水分十分入浴自立排泄自立移動歩行器使用笑顔で良好（担当者は自動反映されます）"></textarea>
+            <div style="display:flex;gap:8px;margin-top:10px;">
+              <button class="btn bd" id="vbtn" onclick="toggleVoice()">🎤 音声入力 開始</button>
+              <button class="btn bg" onclick="document.getElementById('f-memo').value=''">🗑 クリア</button>
+            </div>
+            <div class="rec-ind" id="ri">
+              <div class="rec-dot"></div><span>音声認識中... もう一度押すと停止</span>
+            </div>
+          </div>
+          <!-- 解析プレビュー -->
+          <div id="memo-preview" style="display:none;">
+            <div class="voice-check">
+              <strong>✅ 解析チェック（生成前に確認してください）</strong>
+              <div class="vc-items" id="vc-check-items"></div>
+            </div>
+          </div>
+          <p style="font-size:11px;color:#94a3b8;margin-top:6px;">※ 音声入力はChrome/Edgeのみ対応（HTTPS環境で動作）</p>
+        </div>
+
+        <button class="btn bp" style="width:100%;justify-content:center;padding:13px;margin-top:14px;font-size:14px;" onclick="generate()">
+          ✨ AI記録を生成する
+        </button>
+        <div class="loading" id="gen-load"><div class="spin"></div>AIが記録を生成中...</div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">📄 生成された記録</div>
+        <div class="out-box" id="out"></div>
+        <div class="out-empty" id="out-empty">← 入力してAIで記録を生成してみましょう 🤖</div>
+        <div id="out-btns" style="display:none;">
+          <div class="brow">
+            <button class="btn bs" onclick="saveRec()">💾 保存する</button>
+            <button class="btn bo" onclick="copyRec()">📋 コピー</button>
+            <button class="btn bg" onclick="clearOut()">🗑 クリア</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ========== 記録一覧 ========== -->
+<div class="page" id="page-list">
+  <div class="card">
+    <div class="card-title">📂 介護記録一覧</div>
+    <div class="frow">
+      <input id="fs" placeholder="🔍 利用者名・キーワード" oninput="renderList()" style="flex:1;min-width:160px;">
+      <select id="fst" onchange="renderList()"><option value="">全スタッフ</option></select>
+      <select id="fsvc" onchange="renderList()">
+        <option value="">全サービス</option>
+        <option>デイサービス</option><option>訪問介護</option>
+        <option>施設入居</option><option>ショートステイ</option>
+      </select>
+      <input id="fd1" type="date" onchange="renderList()">
+      <span style="font-size:12px;color:#94a3b8;">〜</span>
+      <input id="fd2" type="date" onchange="renderList()">
+      <button class="btn bg" onclick="clearF()">✕ リセット</button>
+      <button class="btn bs" onclick="exportCSV()">📥 CSV出力</button>
+    </div>
+    <div class="twrap">
+      <table>
+        <thead><tr>
+          <th>日時</th><th>利用者名</th><th>担当</th><th>サービス</th>
+          <th>バイタル</th><th>食事</th><th>様子</th><th>操作</th>
+        </tr></thead>
+        <tbody id="list-body"></tbody>
+      </table>
+    </div>
+    <div style="margin-top:8px;font-size:12px;color:#94a3b8;" id="list-cnt"></div>
+  </div>
+</div>
+
+<!-- ========== ダッシュボード ========== -->
+<div class="page" id="page-dash">
+  <!-- 期間フィルター -->
+  <div class="card" style="margin-bottom:16px;padding:16px 20px;">
+    <div style="display:flex;align-items:center;flex-wrap:wrap;gap:10px;">
+      <span style="font-size:13px;font-weight:700;color:var(--blue);">📅 表示期間：</span>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        <button class="btn bg" id="dp-today" onclick="setDashPeriod('today',this)">今日</button>
+        <button class="btn bg" id="dp-week"  onclick="setDashPeriod('week',this)">今週</button>
+        <button class="btn bg" id="dp-month" onclick="setDashPeriod('month',this)" style="background:var(--blue);color:#fff;">今月</button>
+        <button class="btn bg" id="dp-all"   onclick="setDashPeriod('all',this)">全期間</button>
+        <button class="btn bg" id="dp-custom" onclick="setDashPeriod('custom',this)">カスタム</button>
+      </div>
+      <div id="dp-custom-range" style="display:none;align-items:center;gap:6px;">
+        <input type="date" id="dp-from" onchange="updDash()" style="padding:7px 10px;font-size:13px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;">
+        <span style="font-size:12px;color:#94a3b8;">〜</span>
+        <input type="date" id="dp-to" onchange="updDash()" style="padding:7px 10px;font-size:13px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;">
+      </div>
+      <span id="dp-label" style="font-size:12px;color:#94a3b8;"></span>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><div class="n" id="st-total">0</div><div class="l">📋 期間内記録数</div><div class="s" id="st-period-label">今月</div></div>
+    <div class="stat"><div class="n" id="st-today">0</div><div class="l">📅 本日の記録</div><div class="s" id="st-date">—</div></div>
+    <div class="stat"><div class="n" id="st-users">0</div><div class="l">👥 利用者数</div><div class="s">期間内</div></div>
+    <div class="stat"><div class="n" id="st-alrt">0</div><div class="l">⚠️ 要確認</div><div class="s">バイタル異常</div></div>
+  </div>
+  <div class="g2">
+    <div class="card"><div class="card-title">👥 利用者別 記録件数</div><div id="db-users"></div></div>
+    <div class="card"><div class="card-title">👩‍⚕️ 担当者別 記録件数</div><div id="db-staff"></div></div>
+    <div class="card"><div class="card-title">⚠️ バイタル要確認リスト</div><div id="db-alrt"></div></div>
+    <div class="card"><div class="card-title">🍱 食事摂取状況（直近）</div><div id="db-meal"></div></div>
+    <div class="card"><div class="card-title">😊 利用者の様子（直近）</div><div id="db-mood"></div></div>
+  </div>
+</div>
+
+<!-- 自動ロック警告バナー -->
+<div id="auto-lock-warning">
+  <span id="alw-text">⏱ 操作がないため、間もなく画面ロックします</span>
+  <span class="alw-close" onclick="dismissLockWarning()">&#10005;</span>
+</div>
+
+<!-- ========== 導入ガイド ========== -->
+<div class="page" id="page-setup">
+  <div class="card">
+    <div class="card-title">⚙️ 実際の施設への導入方法（完全無料）</div>
+    <div style="background:var(--bluebg);border-radius:10px;padding:14px;margin-bottom:18px;font-size:13px;">
+      <strong>💡 推奨構成：このHTMLファイル ＋ Googleスプレッドシート（完全無料）</strong><br>
+      <span style="color:#475569;">スタッフはURLを開くだけ。データはGoogleスプレッドシートに自動保存。複数人同時利用OK。</span>
+    </div>
+    <div class="step"><div class="snum">1</div><div><h3>Googleスプレッドシートを作成</h3><p>Googleドライブで新規スプレッドシートを作成。シート名を「介護記録」に変更。</p></div></div>
+    <div class="step"><div class="snum">2</div><div><h3>Apps Script（GAS）でAPIを作成</h3><p>スプレッドシートの「拡張機能 → Apps Script」を開き、以下を貼り付け・保存。</p>
+      <div class="codebox">function doPost(e) {
+  const s = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('介護記録');
+  const d = JSON.parse(e.postData.contents);
+  s.appendRow([d.datetime,d.name,d.staff,d.service,d.temp,d.bp,d.pulse,d.spo2,d.meal,d.water,d.bath,d.toilet,d.walk,d.mood,d.note,d.alerts,d.record]);
+  return ContentService.createTextOutput('{"status":"ok"}').setMimeType(ContentService.MimeType.JSON);
+}</div></div></div>
+    <div class="step"><div class="snum">3</div><div><h3>「デプロイ」してURLを取得</h3><p>Apps Scriptの「デプロイ → 新しいデプロイ → ウェブアプリ」を選択。アクセス権限を「全員」に設定してURLをコピー。</p></div></div>
+    <div class="step"><div class="snum">4</div><div><h3>このHTMLのGAS_ENDPOINTに貼り付け</h3>
+      <div class="codebox">const GAS_ENDPOINT = 'https://script.google.com/macros/s/あなたのID/exec';</div></div></div>
+    <div class="step"><div class="snum">5</div><div><h3>GitHub Pagesで無料公開 → URLをスタッフに共有</h3><p>HTMLファイルをGitHub Pagesにアップロード（無料・HTTPS対応）。URLをスタッフに送るだけ。音声入力も動作します。</p></div></div>
+    <div style="background:var(--greenbg);border:1.5px solid #86efac;border-radius:10px;padding:14px;font-size:12.5px;line-height:2;">
+      ✅ スマホ・タブレット・PC どれでも対応&nbsp;&nbsp;✅ 複数スタッフ同時利用&nbsp;&nbsp;✅ クラウド自動保存<br>
+      ✅ 利用者別・担当者別・日付別 検索・絞り込み&nbsp;&nbsp;✅ CSV/Excel書き出し&nbsp;&nbsp;✅ 完全無料
+    </div>
+  </div>
+</div>
+
+<!-- ========== スタッフ管理（管理者専用） ========== -->
+<div class="page" id="page-staff">
+
+  <!-- 管理者バナー -->
+  <div style="background:var(--yellowbg);border:2px solid #fde047;border-radius:12px;padding:14px 20px;margin-bottom:18px;display:flex;align-items:center;gap:12px;">
+    <span style="font-size:22px;">👥</span>
+    <div>
+      <div style="font-size:13px;font-weight:800;color:#92400e;">スタッフ管理（管理者専用）</div>
+      <div style="font-size:11px;color:#b45309;" id="staff-page-admin-name">管理者がログイン中のみ操作できます</div>
+    </div>
+  </div>
+
+  <!-- スタッフ追加フォーム -->
+  <div class="card" style="margin-bottom:18px;">
+    <div class="card-title">➕ スタッフを追加</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">
+      <div style="flex:1;min-width:140px;">
+        <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;">スタッフ名</label>
+        <input id="sp-new-name" placeholder="例：山本 太郎" style="width:100%;padding:9px 11px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;">
+      </div>
+      <div>
+        <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;">役割</label>
+        <select id="sp-new-role" style="padding:9px 11px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;background:#fff;">
+          <option value="staff">一般スタッフ</option>
+          <option value="admin">👑 管理者</option>
+        </select>
+      </div>
+      <button class="btn bp" onclick="spAddStaff()" style="white-space:nowrap;">＋ 追加</button>
+    </div>
+    <div style="margin-top:8px;font-size:11px;color:#94a3b8;">追加後の初期PINは <strong>1234</strong> です。本人にPIN変更を促してください。<br>👑 <strong>管理者</strong>: 設定変更・スタッフ管理・全PIN変更が可能な管理用アカウント</div>
+  </div>
+
+  <!-- スタッフ一覧 -->
+  <div class="card">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+      <div class="card-title" style="margin:0;">👤 登録スタッフ一覧</div>
+      <span id="sp-staff-count" style="font-size:12px;color:var(--gray);background:var(--bluebg);padding:4px 10px;border-radius:20px;font-weight:600;"></span>
+    </div>
+
+    <!-- ログイン履歴サマリ -->
+    <div id="sp-login-summary" style="background:var(--graybg);border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:12px;color:var(--gray);"></div>
+
+    <div id="sp-staff-list"></div>
+  </div>
+
+  <!-- ログイン履歴 -->
+  <div class="card" style="margin-top:18px;">
+    <div class="card-title">📋 ログイン履歴（直近10件）</div>
+    <div id="sp-login-log"></div>
+  </div>
+
+</div>
+
+<!-- ========== 管理設定（管理者専用） ========== -->
+<div class="page" id="page-settings">
+
+  <!-- 認証バナー -->
+  <div style="background:var(--yellowbg);border:2px solid #fde047;border-radius:12px;padding:14px 20px;margin-bottom:18px;display:flex;align-items:center;gap:12px;">
+    <span style="font-size:22px;">👑</span>
+    <div>
+      <div style="font-size:13px;font-weight:800;color:#92400e;">管理者専用設定ページ</div>
+      <div style="font-size:11px;color:#b45309;" id="settings-admin-name">管理者がログイン中のみ表示されます</div>
+    </div>
+  </div>
+
+  <!-- セクション1: セキュリティ設定 -->
+  <div class="card settings-section">
+    <div class="sec-title">🔒 セキュリティ設定</div>
+
+    <div class="setting-row">
+      <div>
+        <div class="setting-label">自動画面ロック時間</div>
+        <div class="setting-desc">指定時間操作なしの場合、自動でロックします。<br>
+          <span style="color:#16a34a;font-weight:600;">★ おすすめ: 10分（個人情報保護のバランス）</span></div>
+      </div>
+      <div class="setting-control">
+        <select id="set-autolock" onchange="saveSettings()">
+          <option value="0">無効（すすめない）</option>
+          <option value="5">5分</option>
+          <option value="10" selected>10分 ★おすすめ</option>
+          <option value="15">15分</option>
+          <option value="30">30分</option>
+          <option value="60">1時間</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="setting-row">
+      <div>
+        <div class="setting-label">ロック前警告表示</div>
+        <div class="setting-desc">ロック1分前に画面上部に警告を表示します。<br>
+          <span style="color:#16a34a;font-weight:600;">★ おすすめ: ON</span></div>
+      </div>
+      <div class="setting-control">
+        <label class="toggle"><input type="checkbox" id="set-lockwarn" checked onchange="saveSettings()"><span class="toggle-slider"></span></label>
+      </div>
+    </div>
+
+    <div class="setting-row">
+      <div>
+        <div class="setting-label">ログイン履歴記録</div>
+        <div class="setting-desc">誰がいつログインしたか記録します。<br>
+          <span style="color:#16a34a;font-weight:600;">★ おすすめ: ON</span></div>
+      </div>
+      <div class="setting-control">
+        <label class="toggle"><input type="checkbox" id="set-loginlog" checked onchange="saveSettings()"><span class="toggle-slider"></span></label>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- セクション2: 記録入力設定 -->
+  <div class="card settings-section">
+    <div class="sec-title">📝 記録入力設定</div>
+
+    <div class="setting-row">
+      <div>
+        <div class="setting-label">デフォルトサービス種別</div>
+        <div class="setting-desc">記録入力時の初期選択値。<br>
+          <span style="color:#16a34a;font-weight:600;">★ おすすめ: デイサービス</span></div>
+      </div>
+      <div class="setting-control">
+        <select id="set-defsvc" onchange="saveSettings()">
+          <option value="">-- 選択なし --</option>
+          <option value="デイサービス" selected>デイサービス ★</option>
+          <option value="訪問介護">訪問介護</option>
+          <option value="施設入居">施設入居</option>
+          <option value="ショートステイ">ショートステイ</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="setting-row">
+      <div>
+        <div class="setting-label">バイタル異常時の警告音</div>
+        <div class="setting-desc">异常値検知時に音で通知します。<br>
+          <span style="color:#16a34a;font-weight:600;">★ おすすめ: ON</span></div>
+      </div>
+      <div class="setting-control">
+        <label class="toggle"><input type="checkbox" id="set-alertsound" checked onchange="saveSettings()"><span class="toggle-slider"></span></label>
+      </div>
+    </div>
+
+    <div class="setting-row">
+      <div>
+        <div class="setting-label">保存後自動クリア</div>
+        <div class="setting-desc">記録保存後にフォームを自動でクリアします。</div>
+      </div>
+      <div class="setting-control">
+        <label class="toggle"><input type="checkbox" id="set-autoclear" onchange="saveSettings()"><span class="toggle-slider"></span></label>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- セクション3: 表示設定 -->
+  <div class="card settings-section">
+    <div class="sec-title">📊 ダッシュボード設定</div>
+
+    <div class="setting-row">
+      <div>
+        <div class="setting-label">デフォルト表示期間</div>
+        <div class="setting-desc">ダッシュボードを開いた時の初期表示期間。<br>
+          <span style="color:#16a34a;font-weight:600;">★ おすすめ: 今月</span></div>
+      </div>
+      <div class="setting-control">
+        <select id="set-dashperiod" onchange="saveSettings()">
+          <option value="today">今日</option>
+          <option value="week">今週</option>
+          <option value="month" selected>今月 ★</option>
+          <option value="all">全期間</option>
+        </select>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- セクション4: システム設定 -->
+  <div class="card settings-section">
+    <div class="sec-title">🏥 システム設定</div>
+
+    <div class="setting-row">
+      <div>
+        <div class="setting-label">システム名</div>
+        <div class="setting-desc">ナビゲーションバーに表示されるシステム名。</div>
+      </div>
+      <div class="setting-control">
+        <input type="text" id="set-sysname" value="介護記録 管理システム" oninput="saveSettings()">
+      </div>
+    </div>
+
+    <div class="setting-row">
+      <div>
+        <div class="setting-label">GASエンドポイント（Googleスプレッドシート連携）</div>
+        <div class="setting-desc">スプレッドシートに自動保存する場合にGAS URLを設定。</div>
+      </div>
+      <div class="setting-control">
+        <input type="text" id="set-gas" placeholder="https://script.google.com/..." style="width:220px;" oninput="saveSettings()">
+      </div>
+    </div>
+
+  </div>
+
+  <!-- セクション5: データ管理 -->
+  <div class="card settings-section">
+    <div class="sec-title">🗄️ データ管理</div>
+    <div style="background:var(--redbg);border:1.5px solid #fca5a5;border-radius:10px;padding:14px;margin-bottom:14px;font-size:12.5px;color:#7f1d1d;">
+      ⚠️ 下記の操作は元に戻せません。必ずバックアップ（CSV出力）を行ってから実行してください。
+    </div>
+    <div class="brow">
+      <button class="btn bo" onclick="exportCSV()">📥 全記録CSVout（バックアップ）</button>
+      <button class="btn" style="background:var(--redbg);color:var(--red);" onclick="clearAllData()">🗑 全記録を削除</button>
+    </div>
+    <div style="margin-top:14px;">
+      <div class="setting-label" style="font-size:12px;">🔑 スタッフ設定リセット</div>
+      <div style="font-size:11px;color:#94a3b8;margin-bottom:8px;">全スタッフのPINを初期値（1234）に戻し、デフォルトスタッフ構成に手動でリセット。</div>
+      <button class="btn bg" onclick="resetStaffPins()">🔄 全PINを初期化（1234）</button>
+    </div>
+  </div>
+
+  <!-- おすすめ設定サマリ -->
+  <div class="card" style="background:var(--greenbg);border:1.5px solid #86efac;">
+    <div class="card-title" style="color:var(--green);">&#10003; おすすめ設定構成（立ち上げ時）</div>
+    <div style="font-size:12.5px;line-height:2;color:#166534;">
+      🔒 <strong>自動ロック</strong>: 10分（個人情報保護と業務効率のバランス）<br>
+      🔔 <strong>ロック前警告</strong>: ON（投与中の記録が消えるのを防ぐ）<br>
+      🍱 <strong>デフォルトサービス</strong>: デイサービス（最多利用の施設に合わせて変更）<br>
+      📈 <strong>ダッシュボードデフォルト</strong>: 今月（当月の状況をすぐ確認）<br>
+      🔔 <strong>バイタル警告音</strong>: ON（異常値を音で通知）<br>
+      👑 <strong>各師個別PIN</strong>: 自分のID番号行4桁等を推奨（最初は1234）
+    </div>
+    <button class="btn bp" style="margin-top:14px;" onclick="applyRecommendedSettings()">⭐ おすすめ設定を適用</button>
+  </div>
+
+</div>
+
+<!-- スタッフ管理モーダル -->
+<div class="modal-bg" id="staff-modal" onclick="closeStaffModal(event)">
+  <div class="modal" style="max-width:460px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;padding-bottom:10px;border-bottom:2px solid var(--bluebg);">
+      <h3 style="margin:0;padding:0;border:none;">👩‍⚕️ スタッフ管理</h3>
+      <span style="cursor:pointer;font-size:20px;color:var(--gray);" onclick="document.getElementById('staff-modal').classList.remove('on')">✕</span>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
+      <input id="new-staff-input" placeholder="スタッフ名を入力" style="flex:1;min-width:120px;padding:9px 11px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;">
+      <select id="new-staff-role" style="padding:9px 11px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;background:#fff;">
+        <option value="staff">一般スタッフ</option>
+        <option value="admin">👑 管理者</option>
+      </select>
+      <button class="btn bp" onclick="addStaff()">＋ 追加</button>
+    </div>
+    <div style="margin-bottom:12px;font-size:11px;color:#94a3b8;">初期PINは <strong>1234</strong>。管理者は全員のPINを変更できます。</div>
+    <div id="staff-list-box" style="max-height:320px;overflow-y:auto;"></div>
+    <div style="margin-top:14px;font-size:11px;color:#94a3b8;">※ 登録したスタッフは担当者プルダウンとログイン画面に反映されます</div>
+  </div>
+</div>
+
+<!-- PIN変更モーダル -->
+<div class="modal-bg" id="pin-modal" onclick="closePinModal(event)">
+  <div class="modal" style="max-width:360px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;padding-bottom:10px;border-bottom:2px solid var(--bluebg);">
+      <h3 style="margin:0;padding:0;border:none;">🔑 PINコード変更</h3>
+      <span style="cursor:pointer;font-size:20px;color:var(--gray);" onclick="document.getElementById('pin-modal').classList.remove('on')">✕</span>
+    </div>
+    <p id="pin-modal-who" style="font-size:13px;font-weight:600;margin-bottom:12px;color:var(--blue);"></p>
+    <div class="fg" style="margin-bottom:10px;">
+      <label>現在のPIN（4桁）</label>
+      <input id="pm-current" type="password" maxlength="4" inputmode="numeric" placeholder="現在のPINを入力" style="width:100%;padding:9px 11px;border:1.5px solid var(--border);border-radius:8px;font-size:15px;font-family:inherit;letter-spacing:6px;">
+    </div>
+    <div class="fg" style="margin-bottom:10px;">
+      <label>新しいPIN（4桁の数字）</label>
+      <input id="pm-new" type="password" maxlength="4" inputmode="numeric" placeholder="新しいPINを入力" style="width:100%;padding:9px 11px;border:1.5px solid var(--border);border-radius:8px;font-size:15px;font-family:inherit;letter-spacing:6px;">
+    </div>
+    <div class="fg" style="margin-bottom:16px;">
+      <label>新しいPIN（確認）</label>
+      <input id="pm-confirm" type="password" maxlength="4" inputmode="numeric" placeholder="もう一度入力" style="width:100%;padding:9px 11px;border:1.5px solid var(--border);border-radius:8px;font-size:15px;font-family:inherit;letter-spacing:6px;">
+    </div>
+    <p id="pm-err" style="color:var(--red);font-size:12px;min-height:18px;margin-bottom:10px;"></p>
+    <div class="brow">
+      <button class="btn bp" onclick="savePinChange()">💾 変更する</button>
+      <button class="btn bg" onclick="document.getElementById('pin-modal').classList.remove('on')">キャンセル</button>
+    </div>
+  </div>
+</div>
+
+<!-- 詳細モーダル -->
+<div class="modal-bg" id="modal" onclick="closeModal(event)">
+  <div class="modal">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;padding-bottom:10px;border-bottom:2px solid var(--bluebg);">
+      <h3 style="margin:0;padding:0;border:none;" id="m-title">記録詳細</h3>
+      <span style="cursor:pointer;font-size:20px;color:var(--gray);" onclick="document.getElementById('modal').classList.remove('on')">✕</span>
+    </div>
+    <pre id="m-body"></pre>
+    <div class="brow" style="margin-top:14px;">
+      <button class="btn bo" onclick="copyModal()">📋 コピー</button>
+      <button class="btn bg" onclick="document.getElementById('modal').classList.remove('on')">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<!-- トースト -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ===== 設定 =====
+const GAS_ENDPOINT = ''; // 本番導入時にGASのURLを入れてください
+
+// ===== APP設定（管理者が変更可能） =====
+var DEFAULT_SETTINGS = {
+  autoLockMinutes : 10,
+  lockWarning     : true,
+  loginLog        : true,
+  defaultService  : 'デイサービス',
+  alertSound      : true,
+  autoClear       : false,
+  dashPeriodDef   : 'month',
+  systemName      : '介護記録 管理システム',
+  gasEndpoint     : ''
+};
+var APP_SETTINGS = (function(){
+  try{ return Object.assign({}, DEFAULT_SETTINGS, JSON.parse(localStorage.getItem('careSettings')||'{}')); } catch(e){ return Object.assign({}, DEFAULT_SETTINGS); }
+})();
+
+function saveSettings(){
+  APP_SETTINGS.autoLockMinutes = parseInt(document.getElementById('set-autolock').value)||0;
+  APP_SETTINGS.lockWarning     = document.getElementById('set-lockwarn').checked;
+  APP_SETTINGS.loginLog        = document.getElementById('set-loginlog').checked;
+  APP_SETTINGS.defaultService  = document.getElementById('set-defsvc').value;
+  APP_SETTINGS.alertSound      = document.getElementById('set-alertsound').checked;
+  APP_SETTINGS.autoClear       = document.getElementById('set-autoclear').checked;
+  APP_SETTINGS.dashPeriodDef   = document.getElementById('set-dashperiod').value;
+  APP_SETTINGS.systemName      = document.getElementById('set-sysname').value.trim() || '介護記録 管理システム';
+  APP_SETTINGS.gasEndpoint     = document.getElementById('set-gas').value.trim();
+  localStorage.setItem('careSettings', JSON.stringify(APP_SETTINGS));
+  applySettings();
+  resetAutoLockTimer();
+  toast('✅ 設定を保存しました');
+}
+
+function loadSettingsUI(){
+  document.getElementById('set-autolock').value     = APP_SETTINGS.autoLockMinutes;
+  document.getElementById('set-lockwarn').checked   = APP_SETTINGS.lockWarning;
+  document.getElementById('set-loginlog').checked   = APP_SETTINGS.loginLog;
+  document.getElementById('set-defsvc').value       = APP_SETTINGS.defaultService;
+  document.getElementById('set-alertsound').checked = APP_SETTINGS.alertSound;
+  document.getElementById('set-autoclear').checked  = APP_SETTINGS.autoClear;
+  document.getElementById('set-dashperiod').value   = APP_SETTINGS.dashPeriodDef;
+  document.getElementById('set-sysname').value      = APP_SETTINGS.systemName;
+  document.getElementById('set-gas').value          = APP_SETTINGS.gasEndpoint || '';
+}
+
+function applySettings(){
+  // システム名変更
+  var sn = APP_SETTINGS.systemName;
+  document.querySelectorAll('.brand h1, #pin-screen h2').forEach(function(el){ el.textContent = sn; });
+  // ダッシュボード期間デフォルト
+  dashPeriod = APP_SETTINGS.dashPeriodDef;
+}
+
+function applyRecommendedSettings(){
+  if(!confirm('おすすめ設定を適用しますか？（自動ロック10分、警告ON、デイサービスデフォルト、バイタル警告音ON）')) return;
+  APP_SETTINGS.autoLockMinutes = 10;
+  APP_SETTINGS.lockWarning     = true;
+  APP_SETTINGS.loginLog        = true;
+  APP_SETTINGS.defaultService  = 'デイサービス';
+  APP_SETTINGS.alertSound      = true;
+  APP_SETTINGS.autoClear       = false;
+  APP_SETTINGS.dashPeriodDef   = 'month';
+  localStorage.setItem('careSettings', JSON.stringify(APP_SETTINGS));
+  loadSettingsUI();
+  applySettings();
+  resetAutoLockTimer();
+  toast('★ おすすめ設定を適用しました！');
+}
+
+function clearAllData(){
+  if(!confirm('全ての介護記録データを削除しますか？この操作は元に戻せません。')) return;
+  if(!confirm('本当に実行しますか？事前にCSV出力でバックアップしてください。')) return;
+  DB = [];
+  localStorage.setItem('careDB', JSON.stringify(DB));
+  renderList(); updDash();
+  toast('🗑 全記録を削除しました');
+}
+
+function resetStaffPins(){
+  if(!confirm('全スタッフのPINを1234にリセットしますか？')) return;
+  STAFF_DATA.forEach(function(s){ s.pin = '1234'; });
+  saveStaffs();
+  toast('🔄 全PINを初期化（1234）しました');
+}
+
+// ===== 自動ロック =====
+var _lockTimer = null;
+var _lockWarnTimer = null;
+var _lastActivity = Date.now();
+var _lockWarningShown = false;
+
+function resetAutoLockTimer(){
+  clearTimeout(_lockTimer);
+  clearTimeout(_lockWarnTimer);
+  dismissLockWarning();
+  _lockWarningShown = false;
+  _lastActivity = Date.now();
+  var mins = parseInt(APP_SETTINGS.autoLockMinutes) || 0;
+  if(mins <= 0) return;
+  var lockMs = mins * 60 * 1000;
+  var warnMs = lockMs - 60000; // 1分前警告
+  if(warnMs > 0 && APP_SETTINGS.lockWarning){
+    _lockWarnTimer = setTimeout(function(){
+      // ログイン中のみ警告
+      if(document.getElementById('pin-screen').style.display==='none' || document.getElementById('pin-screen').style.display===''){
+        if(document.getElementById('pin-screen').style.display !== 'flex'){
+          showLockWarning(1);
+        }
+      }
+    }, warnMs);
+  }
+  _lockTimer = setTimeout(function(){
+    // ログイン中のみ自動ロック
+    var ps = document.getElementById('pin-screen');
+    if(ps && ps.style.display !== 'flex'){
+      dismissLockWarning();
+      lockScreen();
+      toast('⏱ 操作なしのため画面をロックしました');
+    }
+  }, lockMs);
+}
+
+function showLockWarning(remainMin){
+  var el = document.getElementById('auto-lock-warning');
+  if(!el) return;
+  document.getElementById('alw-text').textContent = '⏱ 操作がないため、約'+remainMin+'分後に自動ロックします';
+  el.style.display = 'flex';
+  _lockWarningShown = true;
+}
+function dismissLockWarning(){
+  var el = document.getElementById('auto-lock-warning');
+  if(el) el.style.display = 'none';
+  _lockWarningShown = false;
+}
+
+// ユーザー操作検知→タイマーリセット
+function _onUserActivity(){
+  var ps = document.getElementById('pin-screen');
+  if(ps && ps.style.display === 'flex') return; // ログイン画面ならリセットしない
+  _lastActivity = Date.now();
+  if(parseInt(APP_SETTINGS.autoLockMinutes) > 0){
+    if(_lockWarningShown){ dismissLockWarning(); }
+    resetAutoLockTimer();
+  }
+}
+['click','keydown','touchstart','mousemove'].forEach(function(ev){
+  document.addEventListener(ev, _onUserActivity, {passive:true});
+});
+
+// ===== ログイン中担当者 =====
+var currentLoginStaff = sessionStorage.getItem('careLoginStaff') || '';
+
+// ===== スタッフデータ（name/pin/role） =====
+var DEFAULT_STAFF_DATA = [
+  {name:'鈴木 恵',  pin:'1234', role:'admin'},
+  {name:'田中 美咲', pin:'1234', role:'staff'},
+  {name:'佐藤 健',  pin:'1234', role:'staff'}
+];
+
+function initStaffData(){
+  // 新形式（careStaffData）があればそれを使う
+  var saved = localStorage.getItem('careStaffData');
+  if(saved){
+    try{ return JSON.parse(saved); } catch(e){}
+  }
+  // 旧形式（careStaffs：文字列配列）からマイグレーション
+  var old = localStorage.getItem('careStaffs');
+  if(old){
+    try{
+      var arr = JSON.parse(old);
+      if(Array.isArray(arr) && typeof arr[0]==='string'){
+        var migrated = arr.map(function(n,i){ return {name:n, pin:'1234', role: i===0?'admin':'staff'}; });
+        localStorage.setItem('careStaffData', JSON.stringify(migrated));
+        return migrated;
+      }
+    } catch(e){}
+  }
+  return DEFAULT_STAFF_DATA;
+}
+
+var STAFF_DATA = initStaffData();
+
+// 後方互換用（名前配列）
+function getStaffNames(){ return STAFF_DATA.map(function(s){ return s.name; }); }
+
+function saveStaffs(){
+  localStorage.setItem('careStaffData', JSON.stringify(STAFF_DATA));
+  // 旧keyも更新して互換性維持
+  localStorage.setItem('careStaffs', JSON.stringify(getStaffNames()));
+}
+
+function isAdmin(name){
+  var s = STAFF_DATA.find(function(x){ return x.name === name; });
+  return s && s.role === 'admin';
+}
+
+// ===== ログイン画面スタッフ一覧 =====
+function renderLoginStaffList(){
+  var box = document.getElementById('pin-staff-list');
+  if(!box) return;
+  if(!STAFF_DATA.length){
+    box.innerHTML = '<div style="text-align:center;padding:20px;color:#94a3b8;font-size:13px;">スタッフが登録されていません</div>';
+    return;
+  }
+  box.innerHTML = STAFF_DATA.map(function(s){
+    var badge = s.role==='admin' ? '<span style="font-size:10px;background:#fef3c7;color:#b45309;padding:2px 6px;border-radius:10px;margin-left:6px;">👑 管理者</span>' : '';
+    var esc = s.name.replace(/'/g,"\\'");
+    return '<button onclick="selectLoginStaff(\''+esc+'\')" style="width:100%;padding:11px 14px;margin-bottom:8px;border:1.5px solid var(--border);border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;background:#fafafa;text-align:left;display:flex;align-items:center;gap:8px;">'
+      +'<span style="font-size:18px;">👤</span><span>'+s.name+'</span>'+badge
+      +'<span style="margin-left:auto;font-size:12px;color:#94a3b8;">▶</span></button>';
+  }).join('');
+}
+
+function selectLoginStaff(name){
+  currentLoginStaff = name;
+  document.getElementById('pin-step1').style.display = 'none';
+  document.getElementById('pin-step2').style.display = 'block';
+  document.getElementById('pin-who').textContent = '👤 '+name;
+  pinBuf = '';
+  updDots();
+  document.getElementById('perr').textContent = '';
+}
+
+function goBackToStep1(){
+  document.getElementById('pin-step1').style.display = 'block';
+  document.getElementById('pin-step2').style.display = 'none';
+  pinBuf = '';
+  updDots();
+  document.getElementById('perr').textContent = '';
+  currentLoginStaff = '';
+}
+
+function refreshStaffSelect(){
+  var sel = document.getElementById('f-staff');
+  var cur = sel.value;
+  sel.innerHTML = '<option value="">-- 担当者を選択 --</option>' +
+    STAFF_DATA.map(function(s){ return '<option value="'+s.name+'"'+(s.name===cur?' selected':'')+'>'+s.name+(s.role==='admin'?' 👑':'')+'</option>'; }).join('');
+  // フィルター用セレクトも更新
+  var fst = document.getElementById('fst');
+  if(fst){
+    var fv = fst.value;
+    fst.innerHTML = '<option value="">全スタッフ</option>' +
+      STAFF_DATA.map(function(s){ return '<option value="'+s.name+'"'+(s.name===fv?' selected':'')+'>'+s.name+(s.role==='admin'?' 👑':'')+'</option>'; }).join('');
+  }
+}
+
+function openStaffMgr(){
+  if(!isAdmin(currentLoginStaff)){
+    toast('⚠️ スタッフ編集は管理者のみ操作できます');
+    return;
+  }
+  renderStaffList();
+  document.getElementById('staff-modal').classList.add('on');
+}
+
+function closeStaffModal(e){
+  if(e.target === document.getElementById('staff-modal'))
+    document.getElementById('staff-modal').classList.remove('on');
+}
+
+function renderStaffList(){
+  var box = document.getElementById('staff-list-box');
+  if(!STAFF_DATA.length){
+    box.innerHTML = '<div style="text-align:center;padding:16px;color:#94a3b8;font-size:13px;">スタッフが登録されていません</div>';
+    return;
+  }
+  var viewerIsAdmin = isAdmin(currentLoginStaff);
+  box.innerHTML = STAFF_DATA.map(function(s,i){
+    var badge = s.role==='admin'
+      ? '<span style="font-size:10px;background:#fef3c7;color:#b45309;padding:2px 7px;border-radius:10px;margin-left:6px;">👑 管理者</span>'
+      : '<span style="font-size:10px;background:#f1f5f9;color:#64748b;padding:2px 7px;border-radius:10px;margin-left:6px;">一般</span>';
+    var pinBtn = (viewerIsAdmin || s.name === currentLoginStaff)
+      ? '<button class="btn" style="padding:4px 10px;font-size:11px;background:#eff6ff;color:#2563eb;border-color:#bfdbfe;" onclick="changeStaffPin('+i+')">🔑 PIN変更</button>'
+      : '';
+    var roleBtn = viewerIsAdmin
+      ? '<button class="btn" style="padding:4px 10px;font-size:11px;background:#f0fdf4;color:#15803d;border-color:#86efac;" onclick="toggleStaffRole('+i+')">'+( s.role==='admin' ? '⬇ 一般に' : '⬆ 管理者に' )+'</button>'
+      : '';
+    var delBtn = viewerIsAdmin
+      ? '<button class="btn" style="padding:4px 10px;font-size:11px;background:var(--redbg);color:var(--red);" onclick="deleteStaff('+i+')">🗑</button>'
+      : '';
+    return '<div style="padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;margin-bottom:8px;background:#fafafa;">'
+      +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">'
+      +'<span style="font-size:13px;font-weight:600;">👤 '+s.name+badge+'</span>'
+      +'</div>'
+      +'<div style="display:flex;gap:5px;flex-wrap:wrap;">'
+      +'<button class="btn bg" style="padding:4px 10px;font-size:11px;" onclick="editStaff('+i+')">✏️ 名前変更</button>'
+      +pinBtn+roleBtn+delBtn
+      +'</div></div>';
+  }).join('');
+}
+
+function addStaff(){
+  var inp  = document.getElementById('new-staff-input');
+  var roleSel = document.getElementById('new-staff-role');
+  var name = inp.value.trim();
+  var role = roleSel ? roleSel.value : 'staff';
+  if(!name){ toast('⚠️ スタッフ名を入力してください'); return; }
+  if(STAFF_DATA.find(function(s){ return s.name===name; })){ toast('⚠️ すでに登録されています'); return; }
+  STAFF_DATA.push({name:name, pin:'1234', role:role});
+  saveStaffs();
+  refreshStaffSelect();
+  renderStaffList();
+  renderLoginStaffList();
+  inp.value = '';
+  toast('✅ '+name+' を追加しました（初期PIN: 1234）');
+}
+
+function editStaff(idx){
+  var s = STAFF_DATA[idx];
+  var newName = prompt('新しい名前を入力してください', s.name);
+  if(!newName || !newName.trim()) return;
+  var old = s.name;
+  STAFF_DATA[idx].name = newName.trim();
+  if(currentLoginStaff === old) currentLoginStaff = newName.trim();
+  saveStaffs();
+  refreshStaffSelect();
+  renderStaffList();
+  renderLoginStaffList();
+  toast('✅ 更新しました');
+}
+
+function deleteStaff(idx){
+  var s = STAFF_DATA[idx];
+  if(!confirm('「'+s.name+'」を削除しますか？')) return;
+  STAFF_DATA.splice(idx,1);
+  saveStaffs();
+  refreshStaffSelect();
+  renderStaffList();
+  renderLoginStaffList();
+  toast('🗑 削除しました');
+}
+
+function toggleStaffRole(idx){
+  if(!isAdmin(currentLoginStaff)){ toast('⚠️ 管理者のみ変更できます'); return; }
+  STAFF_DATA[idx].role = (STAFF_DATA[idx].role === 'admin') ? 'staff' : 'admin';
+  saveStaffs();
+  renderStaffList();
+  renderLoginStaffList();
+  toast('✅ ロールを変更しました');
+}
+
+function changeStaffPin(idx){
+  var target = STAFF_DATA[idx];
+  var viewerIsAdmin = isAdmin(currentLoginStaff);
+  var isSelf = target.name === currentLoginStaff;
+  if(!viewerIsAdmin && !isSelf){ toast('⚠️ 自分のPINのみ変更できます'); return; }
+  // PINモーダルを開く（対象インデックス保持）
+  document.getElementById('pin-modal').dataset.targetIdx = idx;
+  document.getElementById('pin-modal-who').textContent = '🔑 「'+target.name+'」のPINを変更';
+  document.getElementById('pm-current').value = '';
+  document.getElementById('pm-new').value = '';
+  document.getElementById('pm-confirm').value = '';
+  document.getElementById('pm-err').textContent = '';
+  document.getElementById('pin-modal').classList.add('on');
+}
+
+// ===== 状態 =====
+var DB    = JSON.parse(localStorage.getItem('careDB') || '[]');
+var recog = null;
+var recOn = false;
+var pinBuf = '';
+
+// ===== PIN =====
+function pi(n){
+  if(pinBuf.length >= 4) return;
+  pinBuf += n;
+  updDots();
+  if(pinBuf.length === 4) setTimeout(checkPin, 180);
+}
+function pd(){
+  pinBuf = pinBuf.slice(0,-1);
+  updDots();
+  document.getElementById('perr').textContent = '';
+}
+function updDots(){
+  for(var i=0;i<4;i++){
+    document.getElementById('d'+i).className = 'dot' + (i < pinBuf.length ? ' on' : '');
+  }
+}
+function checkPin(){
+  var staff = STAFF_DATA.find(function(s){ return s.name === currentLoginStaff; });
+  var correctPin = staff ? staff.pin : '1234';
+  if(pinBuf === correctPin){
+    document.getElementById('pin-screen').style.display = 'none';
+    var dispName = currentLoginStaff || '—';
+    document.getElementById('login-name').textContent = dispName;
+    // フォームの担当者を自動セット
+    if(currentLoginStaff){
+      var staffSel = document.getElementById('f-staff');
+      for(var i=0;i<staffSel.options.length;i++){
+        if(staffSel.options[i].value === currentLoginStaff){ staffSel.value = currentLoginStaff; break; }
+      }
+    }
+    sessionStorage.setItem('careLoginStaff', currentLoginStaff);
+    // 管理者なら設定・スタッフ管理ボタン＋編集ボタン表示
+    var isAdminUser = isAdmin(currentLoginStaff);
+    var settingsBtn = document.getElementById('nav-settings-btn');
+    var staffNavBtn = document.getElementById('nav-staff-btn');
+    var staffEditBtn = document.getElementById('staff-edit-btn');
+    if(settingsBtn)  settingsBtn.style.display  = isAdminUser ? '' : 'none';
+    if(staffNavBtn)  staffNavBtn.style.display  = isAdminUser ? '' : 'none';
+    if(staffEditBtn) staffEditBtn.style.display = isAdminUser ? '' : 'none';
+    // デフォルトサービスをフォームに反映（常に上書き）
+    if(APP_SETTINGS.defaultService){
+      var svcSel = document.getElementById('f-svc');
+      if(svcSel) svcSel.value = APP_SETTINGS.defaultService;
+    }
+    // ログ記録
+    if(APP_SETTINGS.loginLog){
+      var logs = JSON.parse(localStorage.getItem('careLoginLogs')||'[]');
+      logs.unshift({name:currentLoginStaff, time: new Date().toISOString()});
+      if(logs.length > 50) logs = logs.slice(0,50);
+      localStorage.setItem('careLoginLogs', JSON.stringify(logs));
+    }
+    // 自動ロックタイマー開始
+    resetAutoLockTimer();
+    // ログイン後は必ず記録入力ページに戻す（管理者が開いていたページを引き継がせない）
+    document.querySelectorAll('.page').forEach(function(p){ p.classList.remove('on'); });
+    document.querySelectorAll('.nav-btn').forEach(function(b){ b.classList.remove('on'); });
+    var recPage = document.getElementById('page-rec');
+    if(recPage) recPage.classList.add('on');
+    // 最初のnav-btn（記録入力）にon付与
+    var allNavBtns2 = document.querySelectorAll('.nav-btn');
+    if(allNavBtns2.length > 0) allNavBtns2[0].classList.add('on');
+    toast('✅ '+(currentLoginStaff ? currentLoginStaff+'さん、' : '')+'ログインしました！'+(isAdmin(currentLoginStaff) ? ' 👑' : ''));
+  } else {
+    document.getElementById('perr').textContent = '❌ PINコードが違います';
+    pinBuf = '';
+    updDots();
+    var c = document.getElementById('pin-card');
+    c.classList.remove('shake');
+    void c.offsetWidth;
+    c.classList.add('shake');
+    setTimeout(function(){ c.classList.remove('shake'); }, 400);
+  }
+}
+function lockScreen(){
+  clearTimeout(_lockTimer);
+  clearTimeout(_lockWarnTimer);
+  dismissLockWarning();
+  pinBuf = '';
+  updDots();
+  currentLoginStaff = '';
+  sessionStorage.removeItem('careLoginStaff');
+  document.getElementById('perr').textContent = '';
+  // 管理者専用ボタンを全て非表示
+  var settingsBtn  = document.getElementById('nav-settings-btn');
+  var staffNavBtn  = document.getElementById('nav-staff-btn');
+  var staffEditBtn = document.getElementById('staff-edit-btn');
+  if(settingsBtn)  settingsBtn.style.display  = 'none';
+  if(staffNavBtn)  staffNavBtn.style.display  = 'none';
+  if(staffEditBtn) staffEditBtn.style.display = 'none';
+  // フォームリセット（前のユーザーの全情報を消去）
+  clearFormFields(false);  // false = 担当者・サービス種別も空にする
+  // 生成結果もクリア
+  var outEl = document.getElementById('out');
+  if(outEl){ outEl.textContent=''; outEl.classList.remove('on'); }
+  var outBtns = document.getElementById('out-btns');
+  if(outBtns) outBtns.style.display='none';
+  var outEmpty = document.getElementById('out-empty');
+  if(outEmpty) outEmpty.style.display='';
+  // ナビ名前もリセット
+  var ln = document.getElementById('login-name');
+  if(ln) ln.textContent = '—';
+  // STEP1に戻す
+  document.getElementById('pin-step1').style.display = 'block';
+  document.getElementById('pin-step2').style.display = 'none';
+  document.getElementById('pin-screen').style.display = 'flex';
+  renderLoginStaffList();
+}
+
+// ===== PIN変更モーダル =====
+function openPinModal(){
+  var me = STAFF_DATA.find(function(s){ return s.name === currentLoginStaff; });
+  if(!me){ toast('⚠️ まずログインしてください'); return; }
+  document.getElementById('pin-modal').dataset.targetIdx = STAFF_DATA.indexOf(me);
+  document.getElementById('pin-modal-who').textContent = '🔑 「'+me.name+'」のPINを変更';
+  document.getElementById('pm-current').value = '';
+  document.getElementById('pm-new').value = '';
+  document.getElementById('pm-confirm').value = '';
+  document.getElementById('pm-err').textContent = '';
+  document.getElementById('pin-modal').classList.add('on');
+}
+
+function closePinModal(e){
+  if(e.target === document.getElementById('pin-modal'))
+    document.getElementById('pin-modal').classList.remove('on');
+}
+
+function savePinChange(){
+  var idx = parseInt(document.getElementById('pin-modal').dataset.targetIdx);
+  if(isNaN(idx) || !STAFF_DATA[idx]){ toast('エラー：スタッフが見つかりません'); return; }
+  var target = STAFF_DATA[idx];
+  var curInput = document.getElementById('pm-current').value.trim();
+  var newPin   = document.getElementById('pm-new').value.trim();
+  var confirm2 = document.getElementById('pm-confirm').value.trim();
+  var errEl = document.getElementById('pm-err');
+  // 管理者が他人のPIN変更する場合は自分のPINで認証
+  var viewer = STAFF_DATA.find(function(s){ return s.name === currentLoginStaff; });
+  if(!viewer){ errEl.textContent = 'ログイン時の情報が取得できません'; return; }
+  if(curInput !== viewer.pin){ errEl.textContent = '❌ 現在のPINが違います'; return; }
+  if(!/^[0-9]{4}$/.test(newPin)){ errEl.textContent = '⚠️ 4桁の数字で入力してください'; return; }
+  if(newPin !== confirm2){ errEl.textContent = '❌ 新しいPINが一致しません'; return; }
+  STAFF_DATA[idx].pin = newPin;
+  saveStaffs();
+  document.getElementById('pin-modal').classList.remove('on');
+  toast('✅ 「'+target.name+'」のPINを変更しました');
+}
+
+
+// ===== スタッフ管理ページ =====
+function spAddStaff(){
+  var nameInp = document.getElementById('sp-new-name');
+  var roleSel = document.getElementById('sp-new-role');
+  var name = nameInp.value.trim();
+  var role = roleSel ? roleSel.value : 'staff';
+  if(!name){ toast('⚠️ スタッフ名を入力してください'); return; }
+  if(STAFF_DATA.find(function(s){ return s.name===name; })){ toast('⚠️ すでに登録されています'); return; }
+  STAFF_DATA.push({name:name, pin:'1234', role:role});
+  saveStaffs();
+  refreshStaffSelect();
+  renderLoginStaffList();
+  renderStaffPage();
+  nameInp.value = '';
+  toast('✅ '+name+' を追加しました（初期PIN: 1234）');
+}
+
+function renderStaffPage(){
+  // スタッフ数バッジ
+  var countEl = document.getElementById('sp-staff-count');
+  if(countEl) countEl.textContent = STAFF_DATA.length + '名登録';
+
+  // ログイン履歴サマリ
+  var logs = JSON.parse(localStorage.getItem('careLoginLogs')||'[]');
+  var sumEl = document.getElementById('sp-login-summary');
+  if(sumEl){
+    if(!logs.length){
+      sumEl.textContent = 'ログイン履歴なし';
+    } else {
+      var last = logs[0];
+      var dt = new Date(last.time);
+      var ds = (dt.getMonth()+1)+'/'+dt.getDate()+' '+String(dt.getHours()).padStart(2,'0')+':'+String(dt.getMinutes()).padStart(2,'0');
+      sumEl.innerHTML = '🕐 最終ログイン: <strong>'+last.name+'</strong> さん（'+ds+'）　総ログイン回数: '+logs.length+'回';
+    }
+  }
+
+  // スタッフ一覧
+  var box = document.getElementById('sp-staff-list');
+  if(!box) return;
+  if(!STAFF_DATA.length){
+    box.innerHTML = '<div style="text-align:center;padding:24px;color:#94a3b8;">スタッフが登録されていません</div>';
+    return;
+  }
+
+  // 各スタッフの記録件数集計
+  var recCounts = {};
+  DB.forEach(function(r){ if(r.staff) recCounts[r.staff]=(recCounts[r.staff]||0)+1; });
+
+  box.innerHTML = STAFF_DATA.map(function(s,i){
+    var isMe = s.name === currentLoginStaff;
+    var roleBadge = s.role==='admin'
+      ? '<span style="font-size:10px;background:#fef3c7;color:#b45309;padding:2px 8px;border-radius:10px;font-weight:700;">👑 管理者</span>'
+      : '<span style="font-size:10px;background:#f1f5f9;color:#64748b;padding:2px 8px;border-radius:10px;">一般</span>';
+    var meBadge = isMe ? '<span style="font-size:10px;background:#dcfce7;color:#15803d;padding:2px 8px;border-radius:10px;font-weight:700;">● 自分</span>' : '';
+    var cnt = recCounts[s.name] || 0;
+
+    return '<div style="border:1.5px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:10px;background:'+(isMe?'#f0fdf4':'#fafafa')+';">'
+      +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;">'
+      +'<span style="font-size:15px;font-weight:700;">👤 '+s.name+'</span>'
+      +roleBadge+meBadge
+      +'<span style="margin-left:auto;font-size:12px;color:var(--gray);">記録 '+cnt+'件</span>'
+      +'</div>'
+      +'<div style="display:flex;gap:6px;flex-wrap:wrap;">'
+      +'<button class="btn bg" style="padding:5px 12px;font-size:12px;" onclick="spEditName('+i+')">✏️ 名前変更</button>'
+      +'<button class="btn" style="padding:5px 12px;font-size:12px;background:#eff6ff;color:#2563eb;border-color:#bfdbfe;" onclick="spChangePIN('+i+')">🔑 PIN変更</button>'
+      +'<button class="btn" style="padding:5px 12px;font-size:12px;background:#f0fdf4;color:#15803d;border-color:#86efac;" onclick="spToggleRole('+i+')">'+(s.role==='admin'?'⬇ 一般に変更':'⬆ 管理者に昇格')+'</button>'
+      +(STAFF_DATA.length > 1 ? '<button class="btn" style="padding:5px 12px;font-size:12px;background:var(--redbg);color:var(--red);" onclick="spDelete('+i+')">🗑 削除</button>' : '')
+      +'</div>'
+      +'</div>';
+  }).join('');
+
+  // ログイン履歴一覧
+  var logEl = document.getElementById('sp-login-log');
+  if(logEl){
+    if(!logs.length){
+      logEl.innerHTML = '<div style="text-align:center;padding:16px;color:#94a3b8;font-size:13px;">ログイン履歴がありません</div>';
+    } else {
+      logEl.innerHTML = logs.slice(0,10).map(function(l){
+        var dt = new Date(l.time);
+        var ds = dt.getFullYear()+'/'+(dt.getMonth()+1)+'/'+dt.getDate()+' '+String(dt.getHours()).padStart(2,'0')+':'+String(dt.getMinutes()).padStart(2,'0');
+        var isAdm = STAFF_DATA.find(function(s){ return s.name===l.name && s.role==='admin'; });
+        return '<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);font-size:12.5px;">'
+          +'<span style="color:#94a3b8;min-width:110px;">'+ds+'</span>'
+          +'<strong>'+l.name+'</strong>'
+          +(isAdm?'<span style="font-size:10px;background:#fef3c7;color:#b45309;padding:1px 6px;border-radius:8px;">👑</span>':'')
+          +'</div>';
+      }).join('');
+    }
+  }
+}
+
+function spEditName(idx){
+  var s = STAFF_DATA[idx];
+  var newName = prompt('新しい名前を入力してください', s.name);
+  if(!newName || !newName.trim()) return;
+  var old = s.name;
+  STAFF_DATA[idx].name = newName.trim();
+  if(currentLoginStaff === old) currentLoginStaff = newName.trim();
+  saveStaffs(); refreshStaffSelect(); renderLoginStaffList(); renderStaffPage();
+  toast('✅ 名前を変更しました');
+}
+
+function spChangePIN(idx){
+  changeStaffPin(idx);
+}
+
+function spToggleRole(idx){
+  if(!isAdmin(currentLoginStaff)){ toast('⚠️ 管理者のみ変更できます'); return; }
+  var s = STAFF_DATA[idx];
+  // 管理者が自分1人の場合は降格を禁止
+  if(s.role==='admin'){
+    var adminCount = STAFF_DATA.filter(function(x){ return x.role==='admin'; }).length;
+    if(adminCount <= 1){ toast('⚠️ 管理者は最低1名必要です'); return; }
+  }
+  STAFF_DATA[idx].role = (s.role==='admin') ? 'staff' : 'admin';
+  saveStaffs(); renderStaffPage(); renderLoginStaffList();
+  toast('✅ ロールを変更しました');
+}
+
+function spDelete(idx){
+  var s = STAFF_DATA[idx];
+  if(s.name === currentLoginStaff){ toast('⚠️ 自分自身は削除できません'); return; }
+  if(!confirm('「'+s.name+'」を削除しますか？この操作は元に戻せません。')) return;
+  STAFF_DATA.splice(idx,1);
+  saveStaffs(); refreshStaffSelect(); renderLoginStaffList(); renderStaffPage();
+  toast('🗑 削除しました');
+}
+
+// ===== ページ切替 =====
+function sp(id, el){
+  document.querySelectorAll('.page').forEach(function(p){ p.classList.remove('on'); });
+  document.querySelectorAll('.nav-btn').forEach(function(b){ b.classList.remove('on'); });
+  // 管理設定ページは管理者のみアクセス可
+  if((id === 'settings' || id === 'staff') && !isAdmin(currentLoginStaff)){
+    toast('⚠️ 管理者のみアクセスできます'); return;
+  }
+  document.getElementById('page-'+id).classList.add('on');
+  if(el) el.classList.add('on');
+  if(id==='dash') updDash();
+  if(id==='list') renderList();
+  if(id==='settings'){
+    loadSettingsUI();
+    document.getElementById('settings-admin-name').textContent = 'ログイン中: '+currentLoginStaff+' 👑管理者';
+  }
+  if(id==='staff'){
+    renderStaffPage();
+    document.getElementById('staff-page-admin-name').textContent = 'ログイン中: '+currentLoginStaff+' 👑管理者';
+  }
+}
+
+// ===== 入力タブ切替 =====
+function sit(id, el){
+  document.querySelectorAll('.itab').forEach(function(t){ t.classList.remove('on'); });
+  document.querySelectorAll('.ipane').forEach(function(p){ p.classList.remove('on'); });
+  if(el) el.classList.add('on');
+  document.getElementById('ip-'+id).classList.add('on');
+}
+
+// ===== バイタルチェック（全項目） =====
+function checkV(){
+  var t    = parseFloat(document.getElementById('f-temp').value);
+  var s    = parseInt(document.getElementById('f-spo2').value);
+  var bpRaw= document.getElementById('f-bp').value.trim();
+  var p    = parseInt(document.getElementById('f-pulse').value);
+  var h = '';
+
+  // 体温
+  if(t >= 37.5)       h += '<span class="vc vc-r">⚠ 体温 '+t+'℃ 発熱の可能性</span>';
+  else if(t >= 37.0)  h += '<span class="vc vc-y">⚡ 体温 '+t+'℃ やや高め</span>';
+  else if(t >= 36.0)  h += '<span class="vc vc-g">✅ 体温 正常範囲</span>';
+  else if(t > 0)      h += '<span class="vc vc-y">⚡ 体温 '+t+'℃ やや低め</span>';
+
+  // 血圧
+  var bpMatch = bpRaw.match(/(\d+)[\/](\d+)/);
+  if(bpMatch){
+    var sys = parseInt(bpMatch[1]), dia = parseInt(bpMatch[2]);
+    if(sys >= 180 || dia >= 110)      h += '<span class="vc vc-r">⚠ 血圧 '+bpRaw+' 高血圧緊急症レベル</span>';
+    else if(sys >= 140 || dia >= 90)  h += '<span class="vc vc-y">⚡ 血圧 '+bpRaw+' 高血圧（要注意）</span>';
+    else if(sys < 90  || dia < 60)    h += '<span class="vc vc-r">⚠ 血圧 '+bpRaw+' 低血圧</span>';
+    else                               h += '<span class="vc vc-g">✅ 血圧 正常範囲</span>';
+  }
+
+  // 脈拍
+  if(p > 0){
+    if(p > 100)       h += '<span class="vc vc-y">⚡ 脈拍 '+p+'回/分 頻脈</span>';
+    else if(p < 50)   h += '<span class="vc vc-r">⚠ 脈拍 '+p+'回/分 徐脈（要注意）</span>';
+    else if(p < 60)   h += '<span class="vc vc-y">⚡ 脈拍 '+p+'回/分 やや低め</span>';
+    else              h += '<span class="vc vc-g">✅ 脈拍 正常範囲</span>';
+  }
+
+  // SpO2
+  if(s > 0){
+    if(s < 90)         h += '<span class="vc vc-r">⚠ SpO2 '+s+'% 要注意</span>';
+    else if(s < 95)    h += '<span class="vc vc-y">⚡ SpO2 '+s+'% やや低下</span>';
+    else               h += '<span class="vc vc-g">✅ SpO2 正常範囲</span>';
+  }
+
+  document.getElementById('v-alerts').innerHTML = h;
+}
+
+// ===== 音声入力 =====
+function toggleVoice(){
+  var btn = document.getElementById('vbtn');
+  var ri  = document.getElementById('ri');
+  if(!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)){
+    toast('⚠️ Chrome/Edgeをお使いください');
+    return;
+  }
+  if(recOn){
+    recog.stop(); recOn = false;
+    btn.innerHTML = '🎤 音声入力 開始';
+    btn.className = 'btn bd';
+    ri.style.display = 'none';
+    // 音声停止時にプレビュー更新
+    updateMemoPreview();
+    return;
+  }
+  var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  recog = new SR();
+  recog.lang = 'ja-JP';
+  recog.continuous = true;
+  recog.interimResults = true;
+  var final = document.getElementById('f-memo').value;
+  recog.onresult = function(e){
+    var interim = '';
+    for(var i = e.resultIndex; i < e.results.length; i++){
+      if(e.results[i].isFinal) final += e.results[i][0].transcript;
+      else interim += e.results[i][0].transcript;
+    }
+    document.getElementById('f-memo').value = final + interim;
+  };
+  recog.onerror = function(){ recOn=false; btn.innerHTML='🎤 音声入力 開始'; btn.className='btn bd'; ri.style.display='none'; };
+  recog.onend   = function(){ if(recOn) recog.start(); };
+  recog.start();
+  recOn = true;
+  btn.innerHTML = '⏹ 停止';
+  btn.className = 'btn bg';
+  ri.style.display = 'flex';
+}
+
+// ===== メモ解析プレビュー =====
+function updateMemoPreview(){
+  var text = document.getElementById('f-memo').value.trim();
+  if(!text){ document.getElementById('memo-preview').style.display='none'; return; }
+  
+  var parsed = parseMemo(text);
+  var items = [
+    {label:'👤 利用者名', val: parsed.name !== '（確認要）'},
+    {label:'🌡️ 体温',    val: !!parsed.temp},
+    {label:'❤️ 血圧',    val: !!parsed.bp},
+    {label:'💓 脈拍',    val: !!parsed.pulse},
+    {label:'🩸 SpO2',    val: !!parsed.spo2},
+    {label:'🍱 食事',    val: !!parsed.meal},
+    {label:'💧 水分',    val: !!parsed.water},
+    {label:'🚿 入浴',    val: !!parsed.bath},
+    {label:'🚽 排泄',    val: !!parsed.toilet},
+    {label:'🚶 移動',    val: !!parsed.walk},
+    {label:'😊 様子',    val: !!parsed.mood}
+    // ※担当者はログインスタッフから自動反映するため解析チェック不要
+  ];
+  
+  var html = items.map(function(item){
+    var cls = item.val ? 'ok' : 'ng';
+    var icon = item.val ? '✓' : '✗';
+    return '<span class="vci '+cls+'">'+icon+' '+item.label+'</span>';
+  }).join('');
+  
+  document.getElementById('vc-check-items').innerHTML = html;
+  document.getElementById('memo-preview').style.display = 'block';
+}
+
+// f-memoのinputイベントでプレビュー更新
+document.addEventListener('DOMContentLoaded', function(){
+  document.getElementById('f-memo').addEventListener('input', function(){
+    if(this.value.trim()) updateMemoPreview();
+    else document.getElementById('memo-preview').style.display='none';
+  });
+});
+
+// ===== メモ解析（共通関数） =====
+function parseMemo(text){
+  var result = {
+    name:'（確認要）', staff:'（確認要）',
+    temp:'', bp:'', pulse:'', spo2:'',
+    meal:'', water:'', bath:'', toilet:'', walk:'', mood:''
+  };
+  
+  // 利用者名
+  var nm = text.match(/([^\s、。,　]+)(さん|様)/);
+  if(nm) result.name = nm[1]+nm[2];
+
+  // 担当
+  var sfm = text.match(/担当[はが：:　\s]*([^\s、。,　]+)/);
+  if(sfm) result.staff = sfm[1];
+
+  // 体温
+  var tm = text.match(/体温[\s:：]*([\d.]+)|(3[5-9]\.\d)/);
+  if(tm) result.temp = tm[1]||tm[2];
+
+  // 血圧（「120の75」「120/75」「120-75」対応）
+  var bm = text.match(/血圧[\s:：]*([\d]+)[のtoノ\/\s\-]+([\d]+)/);
+  if(bm) result.bp = bm[1]+'/'+bm[2];
+
+  // 脈拍
+  var pm = text.match(/脈拍[\s:：]*([\d]+)/);
+  if(pm) result.pulse = pm[1];
+
+  // SpO2（強化版: SP98, SPO2は98, SpO2 98%, 酸素98, さんそ98 等対応）
+  var sm = text.match(/[Ss][Pp][Oo0][23][\s:：は]*([\d]{2,3})/);        // SpO2, Sp02, spo2
+  if(!sm) sm = text.match(/[Ss][Pp]\s*[Oo0]\s*2[\s:：は]*([\d]{2,3})/); // S P O 2 (スペース区切り)
+  if(!sm) sm = text.match(/サチュレーション[\s:：は]*([\d]{2,3})/);
+  if(!sm) sm = text.match(/酸素[飽和度濃度]*[\s:：は]*([89][\d]|100)/);
+  if(!sm) sm = text.match(/さんそ[\s:：は]*([\d]{2,3})/);
+  // %付き数値（96%, 97% など - 前後の文脈でバイタルっぽい数値）
+  if(!sm){
+    var pctM = text.match(/([9][0-9]|100)\s*%(?![^]*\d{2,3}\s*[/分])/);
+    if(pctM) sm = pctM;
+  }
+  // 「SpO2は正常」の後に数値がある場合
+  if(!sm) sm = text.match(/[Ss][Pp][Oo0]?2?\s*(?:は|が|＝|=)?\s*([8-9][\d]|100)/);
+  // 数値が70-100の範囲にあるものだけ採用
+  if(sm && parseInt(sm[1]) >= 70 && parseInt(sm[1]) <= 100) result.spo2 = sm[1];
+
+  // ===== 食事（強化版） =====
+  if(text.match(/全量|全部食べ|完食/)) result.meal='全量摂取';
+  else if(text.match(/[89]割/)) result.meal='8割程度摂取';
+  else if(text.match(/半量|5割|半分/)) result.meal='半量摂取';
+  else if(text.match(/[23]割/)) result.meal='3割程度摂取';
+  else if(text.match(/食べていない|食べてない|ほとんど食べ|ほぼ食べ|食欲な|食べられ/)) result.meal='ほぼ摂取できず';
+  else if(text.match(/あまり食べ|少ししか食べ|それほど食べ|あまり摂|少量摂/)) result.meal='少量摂取';
+  else if(text.match(/よく食べ|しっかり食べ|食事.*良好|たくさん食べ/)) result.meal='全量摂取';
+  else if(text.match(/食事/)) result.meal='摂取（量要確認）';
+
+  // ===== 水分（新規追加） =====
+  if(text.match(/水分.*十分|水分.*しっかり|たくさん飲|水分.*よく|水分.*問題/)) result.water='十分摂取';
+  else if(text.match(/水分.*少|水分.*あまり|飲んでいない|水分.*拒否|水分.*ない/)) result.water='少量摂取';
+  else if(text.match(/水分/)) result.water='摂取確認';
+
+  // ===== 入浴（強化版） =====
+  if(text.match(/入浴.*自分|自分.*入浴|入浴.*自立|自立.*入浴|自力.*入浴|一人で入浴/)) result.bath='自立入浴（問題なし）';
+  else if(text.match(/入浴.*介助|介助.*入浴|入浴.*問題なし|入浴.*実施/)) result.bath='入浴介助実施（問題なし）';
+  else if(text.match(/シャワー/)) result.bath='シャワー浴実施';
+  else if(text.match(/清拭/)) result.bath='清拭実施';
+  else if(text.match(/入浴なし|入浴.*なし|お風呂.*なし/)) result.bath='本日は入浴なし';
+  else if(text.match(/入浴|お風呂/)) result.bath='入浴実施';
+
+  // ===== 排泄（強化版） =====
+  if(text.match(/排泄.*自分|自分.*排泄|排泄.*自立|自立.*排泄|自力.*排泄|トイレ.*自分|自分.*トイレ|排泄.*自力でできて|トイレ.*自力/)) result.toilet='自立排泄（問題なし）';
+  else if(text.match(/一部介助|部分介助/)) result.toilet='一部介助にて排泄';
+  else if(text.match(/全介助/)) result.toilet='全介助にて排泄';
+  else if(text.match(/オムツ|おむつ/)) result.toilet='オムツ交換実施';
+  else if(text.match(/トイレ|排泄/)) result.toilet='排泄介助実施';
+
+  // ===== 移動（強化版） =====
+  if(text.match(/自立歩行|自力歩行|自分で歩|歩行.*問題なし|自力.*移動|移動.*自力|自力可能|自力で移/)) result.walk='自立歩行（問題なし）';
+  else if(text.match(/歩行器/)) result.walk='歩行器使用にて移動';
+  else if(text.match(/車椅子|車いす|車イス/)) result.walk='車椅子にて移動';
+  else if(text.match(/移動.*全介助|全介助.*移動/)) result.walk='全介助にて移動';
+  else if(text.match(/移動/)) result.walk='移動（方法要確認）';
+
+  // ===== 様子（強化版） =====
+  if(text.match(/笑顔|元気|良好|喜|楽し|嬉し/)) result.mood='笑顔が見られ良好';
+  else if(text.match(/穏やか|落ち着|安定/)) result.mood='穏やかで安定した状態';
+  else if(text.match(/眠|傾眠|うとうと/)) result.mood='傾眠傾向が見られた';
+  else if(text.match(/不穏|興奮/)) result.mood='不穏・興奮の様子が見られた';
+  else if(text.match(/元気がな|不調|具合|しんど|しんどそう/)) result.mood='やや元気がない様子';
+  else if(text.match(/気になる事は無|問題なし|特に変化なし/)) result.mood='穏やかで安定した状態';
+
+  return result;
+}
+
+// ===== AI記録生成 =====
+function generate(){
+  var active = document.querySelector('.ipane.on').id;
+  var load = document.getElementById('gen-load');
+  load.classList.add('on');
+  setTimeout(function(){
+    var rec;
+    if(active === 'ip-form'){
+      rec = genFromForm();
+    } else {
+      var memo = document.getElementById('f-memo').value.trim();
+      if(!memo){ load.classList.remove('on'); toast('⚠️ メモを入力してください'); return; }
+      rec = genFromMemo(memo);
+    }
+    load.classList.remove('on');
+    if(rec) showOut(rec);
+  }, 700);
+}
+
+function gv(id){ return document.getElementById(id).value; }
+
+function genFromForm(){
+  var name = gv('f-name').trim();
+  if(!name){ toast('⚠️ 利用者名を入力してください'); return null; }
+  var dt = new Date(gv('f-dt') || Date.now());
+  var ds = dt.getFullYear()+'年'+(dt.getMonth()+1)+'月'+dt.getDate()+'日';
+  var ts = String(dt.getHours()).padStart(2,'0')+':'+String(dt.getMinutes()).padStart(2,'0');
+  var staff = gv('f-staff') || '（未入力）';
+  var temp=gv('f-temp'), bp=gv('f-bp'), pulse=gv('f-pulse'), spo2=gv('f-spo2');
+
+  var L = [];
+  L.push('【介護日常記録】');
+  L.push('記録日時：'+ds+' '+ts);
+  L.push('利用者名：'+name);
+  L.push('担当職員：'+staff);
+  L.push('サービス：'+gv('f-svc'));
+  L.push('');
+
+  var vt = [];
+  if(temp)  vt.push('体温 '+temp+'℃');
+  if(bp)    vt.push('血圧 '+bp+'mmHg');
+  if(pulse) vt.push('脈拍 '+pulse+'回/分');
+  if(spo2)  vt.push('SpO2 '+spo2+'%');
+  if(vt.length){ L.push('■ バイタルサイン'); L.push(vt.join('　/　')); }
+
+  // 要注意アラート（体温・血圧・脈拍・SpO2）
+  var al = [];
+  if(temp  && parseFloat(temp) >= 37.5)   al.push('⚠ 体温 '+temp+'℃（発熱の可能性）');
+  var bpM = bp ? bp.match(/(\d+)[\/](\d+)/) : null;
+  if(bpM){
+    var sys=parseInt(bpM[1]),dia=parseInt(bpM[2]);
+    if(sys>=180||dia>=110) al.push('⚠ 血圧 '+bp+'mmHg（高血圧緊急症レベル）');
+    else if(sys>=140||dia>=90) al.push('⚠ 血圧 '+bp+'mmHg（高血圧・要注意）');
+    else if(sys<90||dia<60) al.push('⚠ 血圧 '+bp+'mmHg（低血圧）');
+  }
+  var pNum = pulse ? parseInt(pulse) : 0;
+  if(pNum > 100) al.push('⚠ 脈拍 '+pulse+'回/分（頻脈）');
+  else if(pNum > 0 && pNum < 50) al.push('⚠ 脈拍 '+pulse+'回/分（徐脈）');
+  if(spo2  && parseInt(spo2) < 95 && parseInt(spo2) > 0) al.push('⚠ SpO2 '+spo2+'%（低下に注意）');
+  if(al.length){ L.push(''); L.push('⚠️ 要注意事項'); al.forEach(function(a){ L.push(a); }); }
+
+  L.push(''); L.push('■ 日常ケア記録');
+  if(gv('f-meal'))   L.push('・食事：'+gv('f-meal'));
+  if(gv('f-water'))  L.push('・水分：'+gv('f-water'));
+  if(gv('f-bath'))   L.push('・入浴：'+gv('f-bath'));
+  if(gv('f-toilet')) L.push('・排泄：'+gv('f-toilet'));
+  if(gv('f-walk'))   L.push('・移動：'+gv('f-walk'));
+  if(gv('f-mood'))   L.push('・様子：'+gv('f-mood'));
+
+  var note = gv('f-note').trim();
+  if(note){ L.push(''); L.push('■ 特記事項'); L.push(note); }
+
+  L.push('');
+  L.push('─────────────────────');
+  L.push('記録作成：'+staff+'　（AIアシスト記録）');
+  return L.join('\n');
+}
+
+function genFromMemo(text){
+  var now = new Date();
+  var ds  = now.getFullYear()+'年'+(now.getMonth()+1)+'月'+now.getDate()+'日';
+  var ts  = String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
+
+  var p = parseMemo(text);
+
+  var L = [];
+  L.push('【介護日常記録】');
+  L.push('記録日時：'+ds+' '+ts);
+  L.push('利用者名：'+p.name);
+  // 担当者はメモ未記載の場合、選択済みのf-staffから自動反映
+  var staffForRecord = (p.staff && p.staff !== '（確認要）') ? p.staff : (gv('f-staff') || currentLoginStaff || '（確認要）');
+  L.push('担当職員：'+staffForRecord);
+  L.push('');
+
+  var vt = [];
+  if(p.temp)  vt.push('体温 '+p.temp+'℃');
+  if(p.bp)    vt.push('血圧 '+p.bp+'mmHg');
+  if(p.pulse) vt.push('脈拍 '+p.pulse+'回/分');
+  if(p.spo2)  vt.push('SpO2 '+p.spo2+'%');
+  if(vt.length){ L.push('■ バイタルサイン'); L.push(vt.join('　/　')); L.push(''); }
+
+  // アラート
+  var al = [];
+  if(p.temp && parseFloat(p.temp) >= 37.5) al.push('⚠ 体温 '+p.temp+'℃（発熱の可能性）');
+  if(p.bp){
+    var bpM2 = p.bp.match(/(\d+)[\/](\d+)/);
+    if(bpM2){
+      var s2=parseInt(bpM2[1]),d2=parseInt(bpM2[2]);
+      if(s2>=180||d2>=110) al.push('⚠ 血圧 '+p.bp+'mmHg（高血圧緊急症レベル）');
+      else if(s2>=140||d2>=90) al.push('⚠ 血圧 '+p.bp+'mmHg（高血圧・要注意）');
+      else if(s2<90||d2<60) al.push('⚠ 血圧 '+p.bp+'mmHg（低血圧）');
+    }
+  }
+  var pn = p.pulse ? parseInt(p.pulse) : 0;
+  if(pn > 100) al.push('⚠ 脈拍 '+p.pulse+'回/分（頻脈）');
+  else if(pn > 0 && pn < 50) al.push('⚠ 脈拍 '+p.pulse+'回/分（徐脈）');
+  if(p.spo2 && parseInt(p.spo2) < 95) al.push('⚠ SpO2 '+p.spo2+'%（低下に注意）');
+  if(al.length){ L.push('⚠️ 要注意事項'); al.forEach(function(a){ L.push(a); }); L.push(''); }
+
+  L.push('■ 日常ケア記録');
+  if(p.meal)   L.push('・食事：'+p.meal);
+  if(p.water)  L.push('・水分：'+p.water);
+  if(p.bath)   L.push('・入浴：'+p.bath);
+  if(p.toilet) L.push('・排泄：'+p.toilet);
+  if(p.walk)   L.push('・移動：'+p.walk);
+  if(p.mood)   L.push('・様子：'+p.mood);
+
+  L.push(''); L.push('■ 入力メモ（原文参照）');
+  L.push('"'+text+'"');
+  L.push(''); L.push('─────────────────────');
+  L.push('（AIアシスト記録 ※内容を必ずご確認ください）');
+
+  // フォームにも反映
+  if(p.name !== '（確認要）') document.getElementById('f-name').value = p.name.replace(/さん|様/,'');
+  var staffSel = document.getElementById('f-staff');
+  var staffFound = false;
+  for(var i=0;i<staffSel.options.length;i++){
+    if(staffSel.options[i].value === p.staff){ staffSel.value = p.staff; staffFound=true; break; }
+  }
+  if(p.temp)  document.getElementById('f-temp').value = p.temp;
+  if(p.bp)    document.getElementById('f-bp').value = p.bp;
+  if(p.pulse) document.getElementById('f-pulse').value = p.pulse;
+  if(p.spo2)  document.getElementById('f-spo2').value = p.spo2;
+  if(p.meal)   document.getElementById('f-meal').value = p.meal;
+  if(p.water)  document.getElementById('f-water').value = p.water;
+  if(p.bath)   document.getElementById('f-bath').value = p.bath;
+  if(p.toilet) document.getElementById('f-toilet').value = p.toilet;
+  if(p.walk)   document.getElementById('f-walk').value = p.walk;
+  if(p.mood)   document.getElementById('f-mood').value = p.mood;
+  checkV();
+
+  return L.join('\n');
+}
+
+// ===== 出力 =====
+function showOut(rec){
+  document.getElementById('out').textContent = rec;
+  document.getElementById('out').classList.add('on');
+  document.getElementById('out-empty').style.display = 'none';
+  document.getElementById('out-btns').style.display = 'block';
+}
+// ===== フォーム全クリア（左側フィールドを全部リセット） =====
+function clearFormFields(keepStaff){
+  // テキスト・数値フィールド
+  ['f-name','f-temp','f-bp','f-pulse','f-spo2','f-note','f-memo'].forEach(function(id){
+    var el = document.getElementById(id);
+    if(el) el.value = '';
+  });
+  // セレクトフィールド
+  ['f-meal','f-water','f-bath','f-toilet','f-walk','f-mood'].forEach(function(id){
+    var el = document.getElementById(id);
+    if(el) el.value = '';
+  });
+  // バイタル警告クリア
+  var va = document.getElementById('v-alerts');
+  if(va) va.innerHTML = '';
+  // メモプレビュー非表示
+  var mp = document.getElementById('memo-preview');
+  if(mp) mp.style.display = 'none';
+  // 日時を現在時刻にリセット
+  var dtEl = document.getElementById('f-dt');
+  if(dtEl){
+    var now = new Date();
+    dtEl.value = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0')
+      +'T'+String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
+  }
+  // 担当者: keepStaffがfalse(lockScreen)の場合は空、trueの場合はログインスタッフを保持
+  var staffSel = document.getElementById('f-staff');
+  if(staffSel){
+    if(keepStaff && currentLoginStaff){
+      staffSel.value = currentLoginStaff;
+    } else if(!keepStaff){
+      staffSel.value = '';
+    }
+  }
+  // サービス種別: デフォルト設定から再セット（保持時のみ）
+  if(keepStaff && APP_SETTINGS.defaultService){
+    var svcSel = document.getElementById('f-svc');
+    if(svcSel) svcSel.value = APP_SETTINGS.defaultService;
+  } else if(!keepStaff){
+    var svcSel2 = document.getElementById('f-svc');
+    if(svcSel2) svcSel2.value = '';
+  }
+}
+
+function clearOut(){
+  // 左側フォームも全クリア（日時リセット・担当者はログインから再セット）
+  clearFormFields(true);
+  // 右側生成結果もクリア
+  document.getElementById('out').textContent = '';
+  document.getElementById('out').classList.remove('on');
+  document.getElementById('out-empty').style.display = 'block';
+  document.getElementById('out-btns').style.display = 'none';
+  toast('🗑 フォームをクリアしました');
+}
+function copyRec(){
+  var t = document.getElementById('out').textContent;
+  if(!t){ toast('⚠️ 先に記録を生成してください'); return; }
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(t).then(function(){ toast('📋 コピーしました'); });
+  } else {
+    var ta = document.createElement('textarea');
+    ta.value = t;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    toast('📋 コピーしました');
+  }
+}
+
+// ===== 保存 =====
+function saveRec(){
+  var rec = document.getElementById('out').textContent;
+  if(!rec){ toast('⚠️ 先にAI記録を生成してください'); return; }
+
+  // バイタルアラート収集（全項目）
+  var al = [];
+  var tv = parseFloat(gv('f-temp'));
+  var sv = parseInt(gv('f-spo2'));
+  var bpRaw2 = gv('f-bp').trim();
+  var pv2 = parseInt(gv('f-pulse'));
+
+  if(tv >= 37.5) al.push('体温 '+tv+'℃（発熱の可能性）');
+  
+  var bpM3 = bpRaw2.match(/(\d+)[\/](\d+)/);
+  if(bpM3){
+    var sy3=parseInt(bpM3[1]),di3=parseInt(bpM3[2]);
+    if(sy3>=180||di3>=110) al.push('血圧 '+bpRaw2+'mmHg（高血圧緊急症レベル）');
+    else if(sy3>=140||di3>=90) al.push('血圧 '+bpRaw2+'mmHg（高血圧・要注意）');
+    else if(sy3<90||di3<60) al.push('血圧 '+bpRaw2+'mmHg（低血圧）');
+  }
+  if(pv2 > 100) al.push('脈拍 '+pv2+'回/分（頻脈）');
+  else if(pv2 > 0 && pv2 < 50) al.push('脈拍 '+pv2+'回/分（徐脈）');
+  if(sv > 0 && sv < 95) al.push('SpO2 '+sv+'%（低下に注意）');
+
+  var entry = {
+    id      : Date.now(),
+    datetime: gv('f-dt') || new Date().toISOString().slice(0,16),
+    name    : gv('f-name') || '（不明）',
+    staff   : gv('f-staff') || '（不明）',
+    service : gv('f-svc'),
+    temp    : gv('f-temp'), bp: gv('f-bp'), pulse: gv('f-pulse'), spo2: gv('f-spo2'),
+    meal    : gv('f-meal'), water: gv('f-water'),
+    bath    : gv('f-bath'), toilet: gv('f-toilet'),
+    walk    : gv('f-walk'), mood: gv('f-mood'), note: gv('f-note'),
+    record  : rec,
+    alerts  : al
+  };
+
+  DB.unshift(entry);
+  localStorage.setItem('careDB', JSON.stringify(DB));
+
+  if(entry.staff && entry.staff !== '（不明）'){
+    document.getElementById('login-name').textContent = entry.staff;
+  }
+
+  // バイタル警告音（設定がONのときのみ）
+  if(APP_SETTINGS.alertSound && entry.alerts && entry.alerts.length > 0){
+    try{
+      var ac = new (window.AudioContext || window.webkitAudioContext)();
+      var osc = ac.createOscillator();
+      var gain = ac.createGain();
+      osc.connect(gain); gain.connect(ac.destination);
+      osc.frequency.value = 880;
+      gain.gain.setValueAtTime(0.4, ac.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + 0.6);
+      osc.start(); osc.stop(ac.currentTime + 0.6);
+    } catch(e){}
+  }
+
+  toast('💾 記録を保存しました！'+(entry.alerts&&entry.alerts.length?' ⚠️アラートあり':''));
+  updDash();
+  renderList();
+
+  // 保存後自動クリア（設定がONのとき）
+  if(APP_SETTINGS.autoClear){
+    setTimeout(function(){ clearOut(); }, 800);
+  }
+
+  // クラウド保存（GAS）
+  var gasUrl = APP_SETTINGS.gasEndpoint || GAS_ENDPOINT;
+  if(gasUrl){
+    fetch(gasUrl, {method:'POST', body:JSON.stringify(entry)})
+      .then(function(){ toast('☁️ Googleスプレッドシートにも保存されました'); })
+      .catch(function(){ toast('⚠️ クラウド保存に失敗（ローカルには保存済み）'); });
+  }
+}
+
+// ===== 一覧 =====
+function renderList(){
+  var kw  = (document.getElementById('fs').value||'').toLowerCase();
+  var svc = document.getElementById('fsvc').value;
+  var d1  = document.getElementById('fd1').value;
+  var d2  = document.getElementById('fd2').value;
+
+  // スタッフフィルター更新
+  var fstSel = document.getElementById('fst');
+  var fstCur = fstSel.value;
+  var staffs = [];
+  DB.forEach(function(r){ if(r.staff && staffs.indexOf(r.staff)<0) staffs.push(r.staff); });
+  fstSel.innerHTML = '<option value="">全スタッフ</option>' + staffs.map(function(s){
+    return '<option'+(s===fstCur?' selected':'')+'>'+s+'</option>';
+  }).join('');
+  var st = fstSel.value;
+
+  var rows = DB.filter(function(r){
+    if(kw  && !r.name.toLowerCase().includes(kw) && !(r.record||'').toLowerCase().includes(kw)) return false;
+    if(st  && r.staff   !== st)  return false;
+    if(svc && r.service !== svc) return false;
+    if(d1  && r.datetime.slice(0,10) < d1) return false;
+    if(d2  && r.datetime.slice(0,10) > d2) return false;
+    return true;
+  });
+
+  document.getElementById('list-cnt').textContent = rows.length+'件表示 / 全'+DB.length+'件';
+
+  var tbody = document.getElementById('list-body');
+  if(!rows.length){
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:28px;color:#94a3b8;">該当する記録がありません</td></tr>';
+    return;
+  }
+  tbody.innerHTML = rows.map(function(r){
+    var dt  = new Date(r.datetime);
+    var ds  = (dt.getMonth()+1)+'/'+dt.getDate()+' '+String(dt.getHours()).padStart(2,'0')+':'+String(dt.getMinutes()).padStart(2,'0');
+    var abl = r.alerts&&r.alerts.length ? ' <span class="tag trd">⚠要確認</span>' : '';
+    var moodtag = r.mood ? '<span class="tag tbl">'+r.mood+'</span>' : '—';
+    return '<tr>' +
+      '<td style="white-space:nowrap">'+ds+'</td>' +
+      '<td><strong>'+r.name+'</strong></td>' +
+      '<td>'+r.staff+'</td>' +
+      '<td><span class="tag tgr">'+(r.service||'—')+'</span></td>' +
+      '<td style="font-size:11px;white-space:nowrap">'+[r.temp?r.temp+'℃':'', r.bp||''].filter(Boolean).join(' / ')+(abl||'—'.replace('—',''))+'</td>' +
+      '<td>'+(r.meal||'—')+'</td>' +
+      '<td>'+moodtag+'</td>' +
+      '<td style="white-space:nowrap">' +
+        '<button class="btn bo" style="padding:5px 10px;font-size:11px;" onclick="showDetail('+r.id+')">詳細</button>' +
+        '<button class="btn bg" style="padding:5px 10px;font-size:11px;margin-left:4px;" onclick="delRec('+r.id+')">削除</button>' +
+      '</td></tr>';
+  }).join('');
+}
+
+function clearF(){
+  ['fs','fd1','fd2'].forEach(function(id){ document.getElementById(id).value=''; });
+  ['fst','fsvc'].forEach(function(id){ document.getElementById(id).value=''; });
+  renderList();
+}
+function delRec(id){
+  if(!confirm('この記録を削除しますか？')) return;
+  DB = DB.filter(function(r){ return r.id!==id; });
+  localStorage.setItem('careDB', JSON.stringify(DB));
+  renderList(); updDash();
+  toast('🗑 削除しました');
+}
+function exportCSV(){
+  var hd = ['日時','利用者名','担当','サービス','体温','血圧','脈拍','SpO2','食事','水分','入浴','排泄','移動','様子','特記','アラート'];
+  var rows = DB.map(function(r){ return [r.datetime,r.name,r.staff,r.service,r.temp,r.bp,r.pulse,r.spo2,r.meal,r.water,r.bath,r.toilet,r.walk,r.mood,r.note,(r.alerts||[]).join('|')]; });
+  var csv = '\uFEFF' + [hd].concat(rows).map(function(r){ return r.map(function(v){ return '"'+((v||'').toString().replace(/"/g,'""'))+'"'; }).join(','); }).join('\n');
+  var a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = '介護記録_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click();
+  toast('📥 CSVをダウンロードしました');
+}
+
+// ===== ダッシュボード =====
+// ===== ダッシュボード期間管理 =====
+var dashPeriod = 'month'; // デフォルト：今月
+
+function setDashPeriod(period, el){
+  dashPeriod = period;
+  document.querySelectorAll('[id^="dp-"]').forEach(function(b){
+    if(b.tagName==='BUTTON'){ b.style.background=''; b.style.color=''; b.className='btn bg'; }
+  });
+  if(el){ el.style.background='var(--blue)'; el.style.color='#fff'; }
+  var customRange = document.getElementById('dp-custom-range');
+  if(period === 'custom'){
+    customRange.style.display = 'flex';
+  } else {
+    customRange.style.display = 'none';
+  }
+  updDash();
+}
+
+function getDashRange(){
+  var now = new Date();
+  var today = now.toISOString().slice(0,10);
+  var from = '', to = today;
+  if(dashPeriod === 'today'){
+    from = today;
+    document.getElementById('dp-period-label') && (document.getElementById('st-period-label').textContent='今日');
+  } else if(dashPeriod === 'week'){
+    var d = new Date(now); d.setDate(d.getDate() - d.getDay());
+    from = d.toISOString().slice(0,10);
+    document.getElementById('st-period-label') && (document.getElementById('st-period-label').textContent='今週');
+  } else if(dashPeriod === 'month'){
+    from = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-01';
+    document.getElementById('st-period-label') && (document.getElementById('st-period-label').textContent='今月');
+  } else if(dashPeriod === 'all'){
+    from = '2000-01-01';
+    document.getElementById('st-period-label') && (document.getElementById('st-period-label').textContent='全期間');
+  } else if(dashPeriod === 'custom'){
+    from = document.getElementById('dp-from').value || '2000-01-01';
+    to   = document.getElementById('dp-to').value   || today;
+    var label = (from||'—')+' 〜 '+(to||'—');
+    document.getElementById('st-period-label') && (document.getElementById('st-period-label').textContent=label);
+    document.getElementById('dp-label') && (document.getElementById('dp-label').textContent=label);
+  }
+  return {from: from, to: to};
+}
+
+function updDash(){
+  var today = new Date().toISOString().slice(0,10);
+  document.getElementById('st-date').textContent = today;
+
+  // 期間フィルター適用
+  var range = getDashRange();
+  var filteredDB = DB.filter(function(r){
+    var d = r.datetime.slice(0,10);
+    return d >= range.from && d <= range.to;
+  });
+
+  document.getElementById('st-total').textContent = filteredDB.length;
+  document.getElementById('st-today').textContent = DB.filter(function(r){ return r.datetime.slice(0,10)===today; }).length;
+  document.getElementById('st-users').textContent = (function(){ var s={}; filteredDB.forEach(function(r){ s[r.name]=1; }); return Object.keys(s).length; })();
+  var alrts = filteredDB.filter(function(r){ return r.alerts&&r.alerts.length; });
+  document.getElementById('st-alrt').textContent = alrts.length;
+
+  var total = filteredDB.length || 1;
+
+  // 利用者別
+  var um = {};
+  filteredDB.forEach(function(r){ um[r.name]=(um[r.name]||0)+1; });
+  var uel = document.getElementById('db-users');
+  if(!Object.keys(um).length){ uel.innerHTML='<div class="out-empty">期間内の記録がありません</div>'; }
+  else uel.innerHTML = Object.entries(um).sort(function(a,b){ return b[1]-a[1]; }).map(function(arr){
+    var n=arr[0],c=arr[1];
+    return '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">' +
+      '<span style="min-width:90px;font-size:12px;font-weight:600;">'+n+'</span>' +
+      '<div style="flex:1;background:#e2e8f0;border-radius:20px;height:9px;">' +
+      '<div style="background:var(--blue);border-radius:20px;height:9px;width:'+Math.min(c/total*100,100)+'%"></div></div>' +
+      '<span style="font-size:12px;color:var(--gray);">'+c+'件</span></div>';
+  }).join('');
+
+  // 担当者別
+  var sm = {};
+  filteredDB.forEach(function(r){ if(r.staff) sm[r.staff]=(sm[r.staff]||0)+1; });
+  var sel2 = document.getElementById('db-staff');
+  if(!Object.keys(sm).length){ sel2.innerHTML='<div class="out-empty">期間内の記録がありません</div>'; }
+  else sel2.innerHTML = Object.entries(sm).sort(function(a,b){ return b[1]-a[1]; }).map(function(arr){
+    var n=arr[0],c=arr[1];
+    return '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">' +
+      '<span style="min-width:90px;font-size:12px;font-weight:600;">👤 '+n+'</span>' +
+      '<div style="flex:1;background:#e2e8f0;border-radius:20px;height:9px;">' +
+      '<div style="background:var(--green);border-radius:20px;height:9px;width:'+Math.min(c/total*100,100)+'%"></div></div>' +
+      '<span style="font-size:12px;color:var(--gray);">'+c+'件</span></div>';
+  }).join('');
+
+  // アラート
+  var ael = document.getElementById('db-alrt');
+  if(!alrts.length){ ael.innerHTML='<div class="out-empty">期間内に異常値の記録はありません ✅</div>'; }
+  else ael.innerHTML = alrts.slice(0,8).map(function(r){
+    return '<div style="padding:10px;background:var(--redbg);border-radius:8px;margin-bottom:8px;font-size:12px;">' +
+      '<strong>'+r.name+'</strong>　<span style="color:#94a3b8;">'+r.datetime.slice(5,16).replace('T',' ')+'</span>' +
+      r.alerts.map(function(a){ return '<br><span style="color:var(--red);">⚠ '+a+'</span>'; }).join('') +
+      '</div>';
+  }).join('');
+
+  // 食事
+  var mel = document.getElementById('db-meal');
+  var mr  = filteredDB.filter(function(r){ return r.meal; }).slice(0,8);
+  if(!mr.length){ mel.innerHTML='<div class="out-empty">期間内の記録がありません</div>'; }
+  else mel.innerHTML = mr.map(function(r){
+    return '<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-size:12px;">' +
+      '<strong>'+r.name+'</strong><span style="color:#475569;">'+r.meal+'</span></div>';
+  }).join('');
+
+  // 様子
+  var ool = document.getElementById('db-mood');
+  var or2 = filteredDB.filter(function(r){ return r.mood; }).slice(0,8);
+  if(!or2.length){ ool.innerHTML='<div class="out-empty">期間内の記録がありません</div>'; }
+  else ool.innerHTML = or2.map(function(r){
+    var tc = r.mood.includes('良好')||r.mood.includes('穏やか') ? 'tgr' : r.mood.includes('不穏')||r.mood.includes('元気がない') ? 'tyl' : 'tbl';
+    return '<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-size:12px;">' +
+      '<strong>'+r.name+'</strong><span class="tag '+tc+'">'+r.mood+'</span></div>';
+  }).join('');
+}
+
+// ===== モーダル =====
+function showDetail(id){
+  var r = DB.find(function(r){ return r.id===id; });
+  if(!r) return;
+  document.getElementById('m-title').textContent = '📄 '+r.name+'　'+r.datetime.slice(5,16).replace('T',' ');
+  document.getElementById('m-body').textContent  = r.record;
+  document.getElementById('modal').classList.add('on');
+}
+function closeModal(e){
+  if(e.target === document.getElementById('modal')) document.getElementById('modal').classList.remove('on');
+}
+function copyModal(){
+  var t = document.getElementById('m-body').textContent;
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(t).then(function(){ toast('📋 コピーしました'); });
+  } else {
+    var ta = document.createElement('textarea');
+    ta.value = t;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    toast('📋 コピーしました');
+  }
+}
+
+// ===== トースト =====
+function toast(msg){
+  var el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('on');
+  setTimeout(function(){ el.classList.remove('on'); }, 2800);
+}
+
+// ===== 初期化 =====
+window.onload = function(){
+  // 日時セット
+  var now   = new Date();
+  var local = new Date(now.getTime() - now.getTimezoneOffset()*60000);
+  document.getElementById('f-dt').value = local.toISOString().slice(0,16);
+  document.getElementById('st-date').textContent = now.toISOString().slice(0,10);
+
+  // 設定適用
+  applySettings();
+
+  // スタッフセレクト初期化
+  refreshStaffSelect();
+  renderLoginStaffList();
+
+  // sessionStorageにログイン状態なければ必ずロック画面を表示
+  if(!currentLoginStaff){
+    document.getElementById('pin-screen').style.display = 'flex';
+  } else {
+    document.getElementById('login-name').textContent = currentLoginStaff;
+    var isAdminNow = isAdmin(currentLoginStaff);
+    var settingsBtn2  = document.getElementById('nav-settings-btn');
+    var staffNavBtn2  = document.getElementById('nav-staff-btn');
+    var staffEditBtn2 = document.getElementById('staff-edit-btn');
+    if(settingsBtn2)  settingsBtn2.style.display  = isAdminNow ? '' : 'none';
+    if(staffNavBtn2)  staffNavBtn2.style.display  = isAdminNow ? '' : 'none';
+    if(staffEditBtn2) staffEditBtn2.style.display = isAdminNow ? '' : 'none';
+    // デフォルトサービス反映
+    if(APP_SETTINGS.defaultService){
+      var svcSel3 = document.getElementById('f-svc');
+      if(svcSel3) svcSel3.value = APP_SETTINGS.defaultService;
+    }
+    // 自動ロックタイマー開始
+    resetAutoLockTimer();
+  }
+
+  // サンプルデータ（デモ用）
+  if(DB.length === 0){
+    DB = [
+      {id:1,datetime:'2026-02-26T09:30',name:'山田 花子',staff:'鈴木 恵',service:'デイサービス',temp:'36.5',bp:'125/78',pulse:'74',spo2:'98',meal:'全量摂取',water:'十分摂取',bath:'自立入浴（問題なし）',toilet:'自立排泄（問題なし）',walk:'自立歩行（問題なし）',mood:'笑顔があり良好',note:'家族から電話あり。週末の外出を楽しみにしている様子。',record:'【介護日常記録】\n記録日時：2026年2月26日 09:30\n利用者名：山田 花子\n担当職員：鈴木 恵\n\n■ バイタルサイン\n体温 36.5℃　/　血圧 125/78mmHg　/　脈拍 74回/分　/　SpO2 98%\n\n■ 日常ケア記録\n・食事：全量摂取\n・水分：十分摂取\n・入浴：自立入浴（問題なし）\n・排泄：自立排泄（問題なし）\n・様子：笑顔があり良好',alerts:[]},
+      {id:2,datetime:'2026-02-26T10:15',name:'佐藤 次郎',staff:'田中 美咲',service:'デイサービス',temp:'37.8',bp:'145/92',pulse:'92',spo2:'96',meal:'少量摂取',water:'少量摂取',bath:'清拭実施',toilet:'オムツ交換実施',walk:'車椅子にて移動',mood:'やや元気がない様子',note:'朝から食欲低下あり。経過観察が必要。',record:'【介護日常記録】\n記録日時：2026年2月26日 10:15\n利用者名：佐藤 次郎\n担当職員：田中 美咲\n\n■ バイタルサイン\n体温 37.8℃　/　血圧 145/92mmHg　/　脈拍 92回/分\n\n⚠️ 要注意事項\n⚠ 体温 37.8℃（発熱の可能性）\n⚠ 血圧 145/92mmHg（高血圧・要注意）\n\n■ 日常ケア記録\n・食事：少量摂取\n・入浴：清拭実施\n・排泄：オムツ交換実施\n・様子：やや元気がない様子',alerts:['体温 37.8℃（発熱の可能性）','血圧 145/92mmHg（高血圧・要注意）']},
+      {id:3,datetime:'2026-02-25T14:00',name:'田中 幸子',staff:'鈴木 恵',service:'訪問介護',temp:'36.2',bp:'118/70',pulse:'68',spo2:'99',meal:'全量摂取',water:'十分摂取',bath:'シャワー浴実施',toilet:'自立排泄（問題なし）',walk:'歩行器使用にて移動',mood:'穏やか・落ち着いている',note:'特に問題なし。趣味の編み物を楽しんでいた。',record:'【介護日常記録】\n記録日時：2026年2月25日 14:00\n利用者名：田中 幸子\n担当職員：鈴木 恵\n\n■ バイタルサイン\n体温 36.2℃　/　血圧 118/70mmHg　/　脈拍 68回/分\n\n■ 日常ケア記録\n・食事：全量摂取\n・水分：十分摂取\n・入浴：シャワー浴実施\n・様子：穏やか・落ち着いている',alerts:[]},
+      {id:4,datetime:'2026-02-25T11:00',name:'山田 花子',staff:'佐藤 健',service:'デイサービス',temp:'36.7',bp:'128/80',pulse:'76',spo2:'97',meal:'8割程度摂取',water:'十分摂取',bath:'入浴介助実施（問題なし）',toilet:'一部介助にて排泄',walk:'歩行器使用にて移動',mood:'穏やか・落ち着いている',note:'昨日より食欲回復傾向。',record:'【介護日常記録】\n記録日時：2026年2月25日 11:00\n利用者名：山田 花子\n担当職員：佐藤 健',alerts:[]},
+    ];
+    localStorage.setItem('careDB', JSON.stringify(DB));
+  }
+  updDash();
+  renderList();
+};
+</script>
+</body>
+</html>
